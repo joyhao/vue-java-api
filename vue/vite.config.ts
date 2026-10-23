@@ -18,6 +18,11 @@ export default defineConfig({
       dts: 'src/components.d.ts',
     }),
   ],
+  server: {
+    proxy: {
+      '/api': { target: 'http://localhost:5103', changeOrigin: true },
+    },
+  },
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
   },

@@ -1,65 +1,48 @@
-<script setup lang="ts">
-import { useCounterStore } from '@/stores/counter'
-
-const counter = useCounterStore()
-const technologies = [
-  'Vue 3',
-  'TypeScript',
-  'Vite',
-  'Vue Router',
-  'Axios',
-  'Element Plus',
-  'Pinia',
-  'Sass',
-  'ESLint',
-  'Prettier',
-  'unplugin-auto-import',
-  'unplugin-vue-components',
-]
-</script>
-
 <template>
-  <main class="workspace">
-    <header class="topbar">
-      <a class="brand" href="/">vue<span> / starter</span></a>
-      <el-tag type="success" effect="plain" round>开发环境已就绪</el-tag>
+  <main class="home">
+    <header class="home__header">
+      <span class="home__label">工作台</span>
+      <h1>joykit</h1>
     </header>
-
-    <section class="hero">
-      <p class="eyebrow">YOUR NEXT PROJECT STARTS HERE</p>
-      <h1>从一个好起点，<br /><span>构建下一个想法。</span></h1>
-      <p class="description">轻量、类型安全、开箱即用的 Vue 3 工程模板。</p>
-      <div class="technology-list">
-        <el-tag v-for="technology in technologies" :key="technology" type="info" effect="plain">
-          {{ technology }}
-        </el-tag>
-      </div>
+    <section class="home__content" aria-label="功能列表">
+      <h2>用户管理</h2>
+      <p>管理用户资料、状态，支持分页查询与批量操作。</p>
+      <RouterLink to="/users"><el-button type="primary">进入用户管理</el-button></RouterLink>
     </section>
-
-    <section class="cards">
-      <el-card shadow="never" class="demo-card">
-        <p class="eyebrow">01 / STATE MANAGEMENT</p>
-        <h2>让状态流动起来</h2>
-        <p class="muted">点击按钮，体验 Pinia 响应式状态管理。</p>
-        <div class="counter">{{ counter.count }}</div>
-        <p class="muted">双倍计算值：{{ counter.doubled }}</p>
-        <div class="actions">
-          <el-button type="primary" @click="counter.increment">增加计数</el-button>
-          <el-button @click="counter.reset">重置</el-button>
-        </div>
-      </el-card>
-
-      <el-card shadow="never" class="demo-card">
-        <p class="eyebrow">02 / READY TO BUILD</p>
-        <h2>专注于你的业务</h2>
-        <ul class="feature-list">
-          <li><span>页面导航</span><strong>Vue Router · 懒加载路由</strong></li>
-          <li><span>接口请求</span><strong>Axios · 独立请求实例</strong></li>
-          <li><span>组件开发</span><strong>Element Plus · 按需自动导入</strong></li>
-          <li><span>代码质量</span><strong>TypeScript + ESLint + Prettier</strong></li>
-        </ul>
-      </el-card>
-    </section>
-    <footer>VUE STARTER <span>简洁基础，无限可能。</span></footer>
   </main>
 </template>
+
+<style scoped lang="scss">
+.home {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 48px 24px;
+
+  &__label {
+    color: var(--el-color-primary);
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  &__header {
+    margin-bottom: 32px;
+
+    h1 {
+      margin: 12px 0;
+      font-size: clamp(28px, 4vw, 40px);
+    }
+
+    p {
+      color: #78867f;
+      line-height: 1.8;
+    }
+  }
+
+  &__content {
+    padding: 32px 16px;
+    background: #fff;
+    border: 1px solid #e0e7e1;
+    border-radius: 16px;
+  }
+}
+</style>
