@@ -24,7 +24,9 @@ public sealed class UsersController(UserService service) : ControllerBase
     public async Task<ActionResult<DeleteUsersResult>> Delete(string id, CancellationToken ct)
     {
         var result = await service.DeleteAsync([id], ct);
-        return result.DeletedCount == 0 ? NotFound(new { detail = "用户不存在或已被删除。" }) : Ok(result);
+        return result.DeletedCount == 0
+            ? Problem(statusCode: StatusCodes.Status404NotFound, title: "资源不存在", detail: "用户不存在或已被删除。")
+            : Ok(result);
     }
 
     [HttpPost("batch-delete")]

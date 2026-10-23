@@ -1,4 +1,5 @@
 using System.Data;
+using joykit.Application.Common.Exceptions;
 using joykit.Application.Users;
 using joykit.Domain.Users;
 using Npgsql;
@@ -10,7 +11,7 @@ public sealed class UserRepository(NpgsqlDataSource dataSource) : IUserRepositor
 {
     private const string Columns = "id, name, avatar_url, email, phone, status, created_at, updated_at";
 
-    public async Task<(IReadOnlyList<User> Items, long Total)> GetPageAsync(UserQuery query, CancellationToken ct)
+    public async Task<(IReadOnlyList<User> Items, long Total)> GetPageAsync(UserPageQuery query, CancellationToken ct)
     {
         await using var connection = await dataSource.OpenConnectionAsync(ct);
         await using var transaction = await connection.BeginTransactionAsync(IsolationLevel.RepeatableRead, ct);
@@ -19,7 +20,7 @@ public sealed class UserRepository(NpgsqlDataSource dataSource) : IUserRepositor
         await using var count = new NpgsqlCommand("SELECT count(*) FROM public.\"user\"" + filter, connection, transaction);
         count.Parameters.AddWithValue("keyword", NpgsqlDbType.Text, (object?)keyword ?? DBNull.Value);
         var total = (long)(await count.ExecuteScalarAsync(ct))!;
-        await using var command = new NpgsqlCommand($"SELECT {Columns} FROM public.\"user\"{filter} ORDER BY id DESC LIMIT @limit OFFSET @offset", connection, transaction);
+        await using var command = new NpgsqlCommand($"SELECT {Columns} FROM public.\"user\"{filter} ORDER BY created_at DESC, id DESC LIMIT @limit OFFSET @offset", connection, transaction);
         command.Parameters.AddWithValue("keyword", NpgsqlDbType.Text, (object?)keyword ?? DBNull.Value);
         command.Parameters.AddWithValue("limit", query.PageSize);
         command.Parameters.AddWithValue("offset", ((long)query.PageNumber - 1) * query.PageSize);
@@ -32,19 +33,19 @@ public sealed class UserRepository(NpgsqlDataSource dataSource) : IUserRepositor
         return (users, total);
     }
 
-    public Task<User> CreateAsync(SaveUserRequest request, CancellationToken ct) =>
+    public Task<User> CreateAsync(UserWriteData request, CancellationToken ct) =>
         SaveNewAsync(request, ct);
 
-    private async Task<User> SaveNewAsync(SaveUserRequest request, CancellationToken ct)
+    private async Task<User> SaveNewAsync(UserWriteData request, CancellationToken ct)
     {
         await using var command = dataSource.CreateCommand($"INSERT INTO public.\"user\" (name, avatar_url, email, phone, status) VALUES (@name, @avatar, @email, @phone, @status) RETURNING {Columns}");
         AddFields(command, request);
         return (await SaveAsync(command, ct))!;
     }
 
-    public async Task<User?> UpdateAsync(long id, SaveUserRequest request, CancellationToken ct)
+    public async Task<User?> UpdateAsync(long id, UserWriteData request, CancellationToken ct)
     {
-        await using var command = dataSource.CreateCommand($"UPDATE public.\"user\" SET name=@name, avatar_url=@avatar, email=@email, phone=@phone, status=@status, updated_at=clock_timestamp() WHERE id=@id RETURNING {Columns}");
+        await using var command = dataSource.CreateCommand($"UPDATE public.\"user\" SET name=@name, avatar_url=@avatar, email=@email, phone=@phone, status=@status WHERE id=@id RETURNING {Columns}");
         command.Parameters.AddWithValue("id", id);
         AddFields(command, request);
         return await SaveAsync(command, ct);
@@ -70,13 +71,14 @@ public sealed class UserRepository(NpgsqlDataSource dataSource) : IUserRepositor
             await using var reader = await command.ExecuteReaderAsync(ct);
             return await reader.ReadAsync(ct) ? Read(reader) : null;
         }
-        catch (PostgresException exception) when (exception.SqlState == PostgresErrorCodes.UniqueViolation)
+        catch (PostgresException exception) when (
+            exception.SqlState == PostgresErrorCodes.UniqueViolation && exception.ConstraintName == "user_phone_key")
         {
-            throw new UserConflictException("手机号已被其他用户使用。");
+            throw new ConflictException("手机号已被其他用户使用。");
         }
     }
 
-    private static void AddFields(NpgsqlCommand command, SaveUserRequest request)
+    private static void AddFields(NpgsqlCommand command, UserWriteData request)
     {
         command.Parameters.AddWithValue("name", request.Name);
         command.Parameters.AddWithValue("avatar", NpgsqlDbType.Text, (object?)request.AvatarUrl ?? DBNull.Value);

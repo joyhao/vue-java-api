@@ -20,6 +20,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\joykit.Infrastructure\joykit.Infrastructure.csproj" />
+    <ProjectReference Include="..\joykit.Api\joykit.Api.csproj" />
   </ItemGroup>
 
 </Project>

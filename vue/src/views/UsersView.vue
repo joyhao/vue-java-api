@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
-import { isAxiosError } from 'axios'
+import { getErrorMessage as messageOf } from '@/api/errors'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import {
   createUser,
@@ -44,18 +44,6 @@ const rules: FormRules = {
   avatarUrl: [
     { pattern: /^https?:\/\/\S+$/i, message: '请输入 HTTP 或 HTTPS 地址', trigger: 'blur' },
   ],
-}
-
-function messageOf(exception: unknown) {
-  if (isAxiosError(exception)) {
-    const data = exception.response?.data
-    return (
-      data?.detail ||
-      (data?.errors ? Object.values(data.errors).flat().join('；') : null) ||
-      '请求失败，请确认后端服务和数据库已就绪。'
-    )
-  }
-  return '操作失败，请稍后重试。'
 }
 
 async function loadUsers() {
@@ -141,7 +129,7 @@ async function removeUsers(user?: User) {
   deleting.value = true
   try {
     const result = user ? await deleteUser(user.id) : await deleteUsers(ids)
-    ElMessage.success(`已删除 ${result.data.deletedCount} 个用户`)
+    ElMessage.success(`已删除 ${result.deletedCount} 个用户`)
     await loadUsers()
   } catch (exception) {
     ElMessage.error(messageOf(exception))
@@ -172,7 +160,7 @@ async function removeAll() {
   deleting.value = true
   try {
     const result = await deleteAllUsers(confirmation)
-    ElMessage.success(`已删除 ${result.data.deletedCount} 个用户`)
+    ElMessage.success(`已删除 ${result.deletedCount} 个用户`)
     query.pageNumber = 1
     await loadUsers()
   } catch (exception) {
@@ -267,8 +255,9 @@ onMounted(loadUsers)
         <el-table-column label="创建时间" min-width="185"
           ><template #default="{ row }">{{ formatDate(row.createdAt) }}</template></el-table-column
         >
+        <!-- @vue-generic {User} -->
         <el-table-column label="操作" width="140" fixed="right"
-          ><template #default="{ row }: { row: User }"
+          ><template #default="{ row }"
             ><el-button link type="primary" :disabled="busy" @click="openEditor(row)"
               >编辑</el-button
             ><el-button link type="danger" :disabled="busy" @click="removeUsers(row)"

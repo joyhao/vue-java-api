@@ -6,13 +6,13 @@ namespace joykit.Application.Users;
 public sealed class SaveUserRequest
 {
     [Required, StringLength(255)]
-    public string Name { get; set; } = "";
+    public string Name { get => field; set => field = value?.Trim() ?? ""; } = "";
     [StringLength(2048)]
-    public string? AvatarUrl { get; set; }
+    public string? AvatarUrl { get => field; set => field = string.IsNullOrWhiteSpace(value) ? null : value.Trim(); }
     [EmailAddress, StringLength(254)]
-    public string? Email { get; set; }
+    public string? Email { get => field; set => field = string.IsNullOrWhiteSpace(value) ? null : value.Trim(); }
     [StringLength(32), RegularExpression(@"^\+?[0-9()\-\s]{3,32}$")]
-    public string? Phone { get; set; }
+    public string? Phone { get => field; set => field = string.IsNullOrWhiteSpace(value) ? null : value.Trim(); }
     [Range(0, 1)]
     public short Status { get; set; } = 1;
 }
@@ -24,7 +24,7 @@ public sealed class UserQuery
     [Range(1, 100)]
     public int PageSize { get; set; } = 20;
     [StringLength(100)]
-    public string? Keyword { get; set; }
+    public string? Keyword { get => field; set => field = string.IsNullOrWhiteSpace(value) ? null : value.Trim(); }
 }
 
 public sealed record UserDto(string Id, string Name, string? AvatarUrl, string? Email,
@@ -38,4 +38,3 @@ public sealed record PagedUsers(IReadOnlyList<UserDto> Items, long Total, int Pa
 public sealed record DeleteUsersRequest(string[] Ids);
 public sealed record DeleteAllUsersRequest(string Confirmation);
 public sealed record DeleteUsersResult(long DeletedCount);
-public sealed class UserConflictException(string message) : Exception(message);
