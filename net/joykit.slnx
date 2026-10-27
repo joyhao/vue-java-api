@@ -1,7 +1,0 @@
-<Solution>
-  <Project Path="joykit.Api/joykit.Api.csproj" />
-  <Project Path="joykit.Application/joykit.Application.csproj" />
-  <Project Path="joykit.Domain/joykit.Domain.csproj" />
-  <Project Path="joykit.Infrastructure/joykit.Infrastructure.csproj" />
-  <Project Path="joykit.Tests/joykit.Tests.csproj" />
-</Solution>
