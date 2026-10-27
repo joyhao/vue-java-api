@@ -1,0 +1,25 @@
+server:
+  port: ${SERVER_PORT:5103}
+  error:
+    include-message: never
+    include-stacktrace: never
+    include-binding-errors: never
+spring:
+  application:
+    name: joykit-api
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:9006}/${DB_NAME:postgres}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD}
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 0
+      connection-timeout: 5000
+  sql:
+    init:
+      mode: never
+  jackson:
+    time-zone: UTC
+logging:
+  pattern:
+    level: '%5p [traceId=%X{traceId:-}]'
