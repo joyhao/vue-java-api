@@ -15,25 +15,41 @@ export interface User extends UserInput {
 }
 
 export interface UserPage {
-  items: User[]
+  list: User[]
   total: number
-  pageNumber: number
-  pageSize: number
 }
 
+interface Result<T> {
+  code: number
+  message: string
+  data: T
+  timestamp: number
+}
+
+export const getUser = (id: string) =>
+  request.get<Result<User>>(`/users/${id}`).then((response) => response.data.data)
+
 export const getUsers = (params: { pageNumber: number; pageSize: number; keyword: string }) =>
-  request.get<UserPage>('/users', { params }).then((response) => response.data)
+  request
+    .post<Result<UserPage>>('/users/page', {
+      pageIndex: params.pageNumber,
+      pageSize: params.pageSize,
+      keyword: params.keyword,
+    })
+    .then((response) => response.data.data)
 export const createUser = (input: UserInput) =>
-  request.post<User>('/users', input).then((response) => response.data)
+  request.post<Result<User>>('/users', input).then((response) => response.data.data)
 export const updateUser = (id: string, input: UserInput) =>
-  request.put<User>(`/users/${id}`, input).then((response) => response.data)
+  request.put<Result<User>>(`/users/${id}`, input).then((response) => response.data.data)
 export const deleteUser = (id: string) =>
-  request.delete<{ deletedCount: number }>(`/users/${id}`).then((response) => response.data)
+  request
+    .delete<Result<{ deletedCount: number }>>(`/users/${id}`)
+    .then((response) => response.data.data)
 export const deleteUsers = (ids: string[]) =>
   request
-    .post<{ deletedCount: number }>('/users/batch-delete', { ids })
-    .then((response) => response.data)
+    .post<Result<{ deletedCount: number }>>('/users/batch-delete', { ids })
+    .then((response) => response.data.data)
 export const deleteAllUsers = (confirmation: string) =>
   request
-    .post<{ deletedCount: number }>('/users/delete-all', { confirmation })
-    .then((response) => response.data)
+    .post<Result<{ deletedCount: number }>>('/users/delete-all', { confirmation })
+    .then((response) => response.data.data)

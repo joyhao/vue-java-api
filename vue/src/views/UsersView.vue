@@ -56,7 +56,7 @@ async function loadUsers() {
       query.pageNumber = lastPage
       page = await getUsers({ ...query })
     }
-    users.value = page.items
+    users.value = page.list
     total.value = page.total
     selected.value = []
   } catch (exception) {
@@ -118,8 +118,8 @@ async function removeUsers(user?: User) {
   try {
     await ElMessageBox.confirm(
       user
-        ? `确定删除用户“${user.name}”吗？关联的角色关系也会被删除。`
-        : `确定删除选中的 ${ids.length} 个用户吗？关联的角色关系也会被删除。`,
+        ? `确定删除用户“${user.name}”吗？此操作不可恢复。`
+        : `确定删除选中的 ${ids.length} 个用户吗？此操作不可恢复。`,
       '删除用户',
       { type: 'warning', confirmButtonText: '确定删除', cancelButtonText: '取消' },
     )
@@ -142,7 +142,7 @@ async function removeAll() {
   let confirmation: string
   try {
     const result = await ElMessageBox.prompt(
-      '将永久删除数据库中的全部用户及其角色关联，不受搜索条件限制。请输入“删除全部用户”确认。',
+      '将永久删除数据库中的全部用户，不受搜索条件限制。请输入“删除全部用户”确认。',
       '危险操作：删除全部用户',
       {
         type: 'warning',
@@ -220,52 +220,57 @@ onMounted(loadUsers)
         :closable="false"
         class="error-alert"
       />
-      <el-table
-        v-loading="loading || deleting"
-        :data="users"
-        row-key="id"
-        empty-text="暂无用户，请新增用户或调整查询条件"
-        @selection-change="(rows: User[]) => (selected = rows)"
-      >
-        <el-table-column type="selection" width="48" />
-        <el-table-column prop="id" label="ID" width="100" />
-        <el-table-column label="用户" min-width="180"
-          ><template #default="{ row }"
-            ><div class="user-cell">
-              <el-avatar :size="36" :src="row.avatarUrl || undefined">{{
-                row.name.slice(0, 1)
-              }}</el-avatar
-              ><strong>{{ row.name }}</strong>
-            </div></template
-          ></el-table-column
+      <div class="table-container">
+        <el-table
+          height="100%"
+          v-loading="loading || deleting"
+          :data="users"
+          row-key="id"
+          empty-text="暂无用户，请新增用户或调整查询条件"
+          @selection-change="(rows: User[]) => (selected = rows)"
         >
-        <el-table-column prop="email" label="邮箱" min-width="200" show-overflow-tooltip
-          ><template #default="{ row }">{{ row.email || '—' }}</template></el-table-column
-        >
-        <el-table-column prop="phone" label="联系电话" min-width="150"
-          ><template #default="{ row }">{{ row.phone || '—' }}</template></el-table-column
-        >
-        <el-table-column label="状态" width="90"
-          ><template #default="{ row }"
-            ><el-tag :type="row.status === 1 ? 'success' : 'info'">{{
-              row.status === 1 ? '正常' : '禁用'
-            }}</el-tag></template
-          ></el-table-column
-        >
-        <el-table-column label="创建时间" min-width="185"
-          ><template #default="{ row }">{{ formatDate(row.createdAt) }}</template></el-table-column
-        >
-        <!-- @vue-generic {User} -->
-        <el-table-column label="操作" width="140" fixed="right"
-          ><template #default="{ row }"
-            ><el-button link type="primary" :disabled="busy" @click="openEditor(row)"
-              >编辑</el-button
-            ><el-button link type="danger" :disabled="busy" @click="removeUsers(row)"
-              >删除</el-button
-            ></template
-          ></el-table-column
-        >
-      </el-table>
+          <el-table-column type="selection" width="48" />
+          <el-table-column prop="id" label="ID" width="100" />
+          <el-table-column label="用户" min-width="180"
+            ><template #default="{ row }"
+              ><div class="user-cell">
+                <el-avatar :size="36" :src="row.avatarUrl || undefined">{{
+                  row.name.slice(0, 1)
+                }}</el-avatar
+                ><strong>{{ row.name }}</strong>
+              </div></template
+            ></el-table-column
+          >
+          <el-table-column prop="email" label="邮箱" min-width="200" show-overflow-tooltip
+            ><template #default="{ row }">{{ row.email || '—' }}</template></el-table-column
+          >
+          <el-table-column prop="phone" label="联系电话" min-width="150"
+            ><template #default="{ row }">{{ row.phone || '—' }}</template></el-table-column
+          >
+          <el-table-column label="状态" width="90"
+            ><template #default="{ row }"
+              ><el-tag :type="row.status === 1 ? 'success' : 'info'">{{
+                row.status === 1 ? '正常' : '禁用'
+              }}</el-tag></template
+            ></el-table-column
+          >
+          <el-table-column label="创建时间" min-width="185"
+            ><template #default="{ row }">{{
+              formatDate(row.createdAt)
+            }}</template></el-table-column
+          >
+          <!-- @vue-generic {User} -->
+          <el-table-column label="操作" width="140" fixed="right"
+            ><template #default="{ row }"
+              ><el-button link type="primary" :disabled="busy" @click="openEditor(row)"
+                >编辑</el-button
+              ><el-button link type="danger" :disabled="busy" @click="removeUsers(row)"
+                >删除</el-button
+              ></template
+            ></el-table-column
+          >
+        </el-table>
+      </div>
       <div class="pagination">
         <el-pagination
           v-model:current-page="query.pageNumber"
@@ -337,11 +342,17 @@ onMounted(loadUsers)
 
 <style scoped lang="scss">
 .users-page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
   max-width: 1480px;
   margin: 0 auto;
   padding: 32px 24px;
 }
 .page-header {
+  flex-shrink: 0;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -361,6 +372,11 @@ onMounted(loadUsers)
   font-size: 14px;
 }
 .panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
   background: #fff;
   padding: 24px;
   border: 1px solid #e0e7e1;
@@ -396,6 +412,16 @@ onMounted(loadUsers)
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+}
+.table-container {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+.toolbar,
+.error-alert,
+.pagination {
+  flex-shrink: 0;
 }
 .error-alert {
   margin-bottom: 16px;
