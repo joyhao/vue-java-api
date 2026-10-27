@@ -1,5 +1,12 @@
 server:
-  port: ${SERVER_PORT:5103}
+  port: 9007
+  http2:
+    enabled: true
+  servlet:
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
   error:
     include-message: never
     include-stacktrace: never
@@ -8,18 +15,36 @@ spring:
   application:
     name: joykit-api
   datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:9006}/${DB_NAME:postgres}
-    username: ${DB_USERNAME:postgres}
-    password: ${DB_PASSWORD}
+    type: com.zaxxer.hikari.HikariDataSource
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://localhost:9006/blog?currentSchema=public
+    username: postgres
+    password: xinxin
     hikari:
-      maximum-pool-size: 10
-      minimum-idle: 0
-      connection-timeout: 5000
+      maximum-pool-size: 20
+      minimum-idle: 4
+      connection-timeout: 3000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      connection-init-sql: SET TIME ZONE 'Asia/Shanghai'
   sql:
     init:
       mode: never
+  flyway:
+    enabled: false
+    locations: classpath:db/migration
+    default-schema: public
+    clean-disabled: true
+    baseline-on-migrate: false
+    validate-on-migrate: true
   jackson:
-    time-zone: UTC
+    time-zone: Asia/Shanghai
 logging:
+  file:
+    path: ./logs
   pattern:
     level: '%5p [traceId=%X{traceId:-}]'
+springdoc:
+  swagger-ui:
+    path: /swagger
+    operations-sorter: method
