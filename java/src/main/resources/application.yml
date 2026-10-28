@@ -39,6 +39,10 @@ spring:
     validate-on-migrate: true
   jackson:
     time-zone: Asia/Shanghai
+app:
+  datasource:
+    postgres:
+      url: jdbc:postgresql://localhost:9006/postgres?currentSchema=public
 logging:
   file:
     path: ./logs
