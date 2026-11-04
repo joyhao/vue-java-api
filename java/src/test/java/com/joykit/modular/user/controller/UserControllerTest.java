@@ -91,7 +91,7 @@ class UserControllerTest {
     @Test
     void crudAndPagination() throws Exception {
         mvc.perform(post("/api/users").contentType("application/json").content(INPUT))
-            .andExpect(status().isCreated()).andExpect(header().string("Location", "/api/users/1"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.code").value(200))
             .andExpect(jsonPath("$.data.id").value("1"));
         mvc.perform(post("/api/users/page").contentType("application/json")
             .content("{\"pageIndex\":1,\"pageSize\":10,\"keyword\":\"测试\"}"))
