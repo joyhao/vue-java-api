@@ -1,5 +1,6 @@
 package com.joykit.modular.video.controller;
 
+import com.joykit.common.annotation.DevOnlyController;
 import com.joykit.common.constants.ApiConstants;
 import com.joykit.common.result.PageParams;
 import com.joykit.common.result.PageResult;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "视频管理", description = "视频列表接口，当前使用内存模拟数据")
 @RestController
 @RequestMapping(ApiConstants.API_PREFIX + "/videos")
+@DevOnlyController
 public class VideoController {
 
 
