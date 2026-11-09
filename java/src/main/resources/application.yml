@@ -14,19 +14,8 @@ server:
 spring:
   application:
     name: joykit-api
-  datasource:
-    type: com.zaxxer.hikari.HikariDataSource
-    driver-class-name: org.postgresql.Driver
-    url: jdbc:postgresql://localhost:9006/blog?currentSchema=public
-    username: postgres
-    password: xinxin
-    hikari:
-      maximum-pool-size: 20
-      minimum-idle: 4
-      connection-timeout: 3000
-      idle-timeout: 600000
-      max-lifetime: 1800000
-      connection-init-sql: SET TIME ZONE 'Asia/Shanghai'
+  config:
+    import: optional:classpath:application-local.yml
   sql:
     init:
       mode: never
@@ -47,10 +36,6 @@ spring:
       additional-paths: src/main/java
     livereload:
       enabled: true
-app:
-  datasource:
-    postgres:
-      url: jdbc:postgresql://localhost:9006/postgres?currentSchema=public
 logging:
   file:
     path: ./logs
