@@ -5,6 +5,7 @@ import com.joykit.common.constants.ApiConstants;
 import com.joykit.common.result.PageParams;
 import com.joykit.common.result.PageResult;
 import com.joykit.common.result.Result;
+import com.joykit.modular.video.docs.VideoApiDocs;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -24,7 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class VideoController {
 
 
-    @Operation(summary = "分页查询视频列表", description = "基于内存模拟数据分页，不读取数据库")
+    @Operation(summary = VideoApiDocs.LIST_SUMMARY, description = VideoApiDocs.LIST_DESCRIPTION)
     @PostMapping("/page")
     public Result<PageResult<Object>> list(@Valid @RequestBody PageParams params) {
 
