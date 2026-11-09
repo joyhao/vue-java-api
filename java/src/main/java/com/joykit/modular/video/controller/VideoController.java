@@ -5,7 +5,6 @@ import com.joykit.common.constants.ApiConstants;
 import com.joykit.common.result.PageParams;
 import com.joykit.common.result.PageResult;
 import com.joykit.common.result.Result;
-import com.joykit.modular.video.docs.VideoApiDocs;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -18,14 +17,14 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "视频管理", description = "视频列表接口，当前使用内存模拟数据")
+@Tag(name = "视频管理", description = "")
 @RestController
 @RequestMapping(ApiConstants.API_PREFIX + "/videos")
 @DevOnlyController
 public class VideoController {
 
 
-    @Operation(summary = VideoApiDocs.LIST_SUMMARY, description = VideoApiDocs.LIST_DESCRIPTION)
+    @Operation(summary = "分页查询视频列表", description = "")
     @PostMapping("/page")
     public Result<PageResult<Object>> list(@Valid @RequestBody PageParams params) {
 
