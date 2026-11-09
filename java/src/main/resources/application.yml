@@ -39,6 +39,14 @@ spring:
     validate-on-migrate: true
   jackson:
     time-zone: Asia/Shanghai
+  devtools:
+    restart:
+      enabled: true
+      poll-interval: 1s
+      quiet-period: 800ms
+      additional-paths: src/main/java
+    livereload:
+      enabled: true
 app:
   datasource:
     postgres:

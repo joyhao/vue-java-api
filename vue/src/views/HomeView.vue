@@ -1,3 +1,31 @@
+<script setup lang="ts">
+/* global console */
+import { ref } from 'vue'
+import { ElMessage } from 'element-plus'
+import { getErrorMessage as messageOf } from '@/api/errors'
+import { fetchTestData } from '@/api/test'
+
+const testing = ref(false)
+const testResult = ref('')
+
+async function runTest() {
+  testing.value = true
+  testResult.value = ''
+  try {
+    const data = await fetchTestData()
+    console.log('[POST /api/users/test] 返回数据:', data)
+    testResult.value = JSON.stringify(data, null, 2) ?? ''
+    ElMessage.success('请求成功，返回数据已输出到控制台')
+  } catch (exception) {
+    console.error('[POST /api/users/test] 请求失败:', exception)
+    testResult.value = messageOf(exception)
+    ElMessage.error(messageOf(exception))
+  } finally {
+    testing.value = false
+  }
+}
+</script>
+
 <template>
   <main class="home">
     <header class="home__header">
@@ -8,6 +36,12 @@
       <h2>用户管理</h2>
       <p>管理用户资料、状态，支持分页查询与批量操作。</p>
       <RouterLink to="/users"><el-button type="primary">进入用户管理</el-button></RouterLink>
+    </section>
+    <section class="home__content" aria-label="接口测试">
+      <h2>接口测试</h2>
+      <p>点击按钮调用 POST /api/users/test，返回数据会打印到浏览器控制台。</p>
+      <el-button type="success" :loading="testing" @click="runTest">测试 /users/test</el-button>
+      <pre v-if="testResult" class="home__result">{{ testResult }}</pre>
     </section>
   </main>
 </template>
@@ -43,6 +77,23 @@
     background: #fff;
     border: 1px solid #e0e7e1;
     border-radius: 16px;
+
+    & + & {
+      margin-top: 16px;
+    }
+  }
+
+  &__result {
+    margin-top: 16px;
+    padding: 12px;
+    overflow: auto;
+    color: #33443b;
+    font-size: 13px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-break: break-all;
+    background: #f4f8f5;
+    border-radius: 8px;
   }
 }
 </style>
