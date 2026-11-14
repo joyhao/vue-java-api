@@ -10,3 +10,4 @@ target/
 !.env.example
 application-local.yml
 application-prod.yml
+logs/

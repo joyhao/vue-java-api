@@ -6,7 +6,14 @@ export interface VideoPageParams {
   keyword: string
 }
 
-export type VideoItem = Record<string, unknown>
+export interface VideoItem {
+  id: string
+  name: string
+  size: number
+  durationSeconds: number | null
+  thumbnailUrl: string
+  videoUrl: string
+}
 
 export interface VideoPage {
   list: VideoItem[]
@@ -23,4 +30,9 @@ interface Result<T> {
 export const getVideos = (params: VideoPageParams) =>
   request
     .post<Result<VideoPage>>('/videos/page', params)
+    .then((response) => response.data?.data ?? null)
+
+export const getVideoDuration = (id: string) =>
+  request
+    .get<Result<number>>(`/videos/${id}/duration`)
     .then((response) => response.data?.data ?? null)
