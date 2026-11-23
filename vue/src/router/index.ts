@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import request from '@/api/request'
+import { ensureCurrentUser } from '@/api/auth'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -16,7 +16,7 @@ const router = createRouter({
 router.beforeEach(async (to) => {
   if (to.name === 'login' || to.name === 'register') return true
   try {
-    await request.get('/auth/me')
+    await ensureCurrentUser()
     return true
   } catch {
     return { name: 'login', query: { redirect: to.fullPath } }

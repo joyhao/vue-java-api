@@ -1,4 +1,5 @@
 import axios, { type InternalAxiosRequestConfig } from 'axios'
+import { currentUser } from './auth-state'
 
 const options = {
   baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
@@ -22,8 +23,13 @@ request.interceptors.response.use(
   (response) => {
     if (/\/auth\/(login|refresh)(?:\?|$)/.test(response.config.url || '')) {
       accessToken = response.data?.data?.token || null
+      currentUser.value = response.data?.data?.user || null
     }
-    if (/\/auth\/logout(?:\?|$)/.test(response.config.url || '')) accessToken = null
+    if (/\/auth\/logout(?:\?|$)/.test(response.config.url || '')) {
+      localStorage.removeItem('joykit_refresh')
+      accessToken = null
+      currentUser.value = null
+    }
     return response
   },
   async (error) => {
@@ -50,7 +56,9 @@ function refreshAccess() {
     refreshing = refreshClient.post('/auth/refresh').then((response) => {
       accessToken = response.data?.data?.token || null
       if (!accessToken) throw new Error('刷新响应缺少访问凭证')
+      currentUser.value = response.data?.data?.user || null
     }).catch((error) => {
+      if (axios.isAxiosError(error) && error.response?.status === 401) localStorage.removeItem('joykit_refresh')
       accessToken = null
       throw error
     }).finally(() => { refreshing = null })
@@ -58,7 +66,12 @@ function refreshAccess() {
   return refreshing
 }
 
+localStorage.removeItem('joykit_refresh')
+
 function redirectToLogin() {
+  localStorage.removeItem('joykit_refresh')
+  currentUser.value = null
+  accessToken = null
   if (['/login', '/register'].includes(window.location.pathname)) return
   const redirect = window.location.pathname + window.location.search + window.location.hash
   window.location.replace(`/login?redirect=${encodeURIComponent(redirect)}`)

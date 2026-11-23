@@ -1,25 +1,15 @@
 <script setup lang="ts">
-/* global console */
-import { computed, onMounted, ref } from 'vue'
+import { computed, ref } from 'vue'
+import { currentUser } from '@/api/auth-state'
 import { useRouter } from 'vue-router'
 import request from '@/api/request'
 import { ElMessage } from 'element-plus'
 import { getErrorMessage as messageOf } from '@/api/errors'
 
 const router = useRouter()
-const currentUser = ref<{ id: string; account: string; name: string } | null>(null)
 const loggingOut = ref(false)
 const displayName = computed(() => currentUser.value?.name || currentUser.value?.account || '加载中…')
 const avatarText = computed(() => currentUser.value ? Array.from(displayName.value)[0]?.toUpperCase() : '…')
-
-onMounted(async () => {
-  try {
-    const response = await request.get('/auth/me')
-    currentUser.value = response.data.data
-  } catch (error) {
-    ElMessage.error(messageOf(error))
-  }
-})
 
 async function logout() {
   if (loggingOut.value) return
