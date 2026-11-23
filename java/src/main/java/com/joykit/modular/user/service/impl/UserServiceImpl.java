@@ -50,7 +50,7 @@ public class UserServiceImpl implements UserService {
         }
         query.orderByDesc(UserPO::getId);
         Page<UserPO> page = userMapper.selectPage(new Page<>(dto.getPageIndex(), dto.getPageSize()), query);
-        return Result.success(PageResult.of(page.getTotal(), userMapping.poToVo(page.getRecords())));
+        return Result.success(PageResult.of1(page.getTotal(), userMapping.poToVo(page.getRecords())));
     }
 
     @Override

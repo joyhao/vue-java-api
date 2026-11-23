@@ -36,3 +36,16 @@ export const getVideoDuration = (id: string) =>
   request
     .get<Result<number>>(`/videos/${id}/duration`)
     .then((response) => response.data?.data ?? null)
+
+export interface VideoSyncResult {
+  scanned: number
+  inserted: number
+  updated: number
+  removed: number
+  total: number
+}
+
+export const syncVideos = () =>
+  request
+    .post<Result<VideoSyncResult>>('/videos/sync', undefined, { timeout: 120000 })
+    .then((response) => response.data?.data ?? null)

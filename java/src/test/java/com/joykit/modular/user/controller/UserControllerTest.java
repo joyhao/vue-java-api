@@ -47,7 +47,7 @@ class UserControllerTest {
             if (dto.getPageIndex() < 1 || dto.getPageSize() > 1000) {
                 throw new BusinessException(BusinessException.Kind.VALIDATION, "分页参数无效");
             }
-            return Result.success(PageResult.of(users.size(), List.copyOf(users.values())));
+            return Result.success(PageResult.of1(users.size(), List.copyOf(users.values())));
         });
         org.mockito.Mockito.when(service.findById(org.mockito.ArgumentMatchers.anyLong())).thenAnswer(call -> {
             long id = call.getArgument(0);

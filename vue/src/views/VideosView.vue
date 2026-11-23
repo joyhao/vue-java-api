@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { computed, type CSSProperties, onMounted, reactive, ref } from 'vue'
+import { ElMessage } from 'element-plus'
 import { getErrorMessage as messageOf } from '@/api/errors'
 import {
   getVideoDuration,
   getVideos,
+  syncVideos,
   type VideoItem,
   type VideoPage,
 } from '@/api/videos'
@@ -31,6 +33,7 @@ const playerError = ref('')
 const playerRef = ref<{ play: () => Promise<void> } | null>(null)
 const activeGlobal = ref(0)
 const hoveredId = ref<string | null>(null)
+const syncing = ref(false)
 
 let lastWheelAt = 0
 
@@ -124,7 +127,7 @@ async function fetchPage(pageNumber: number) {
     const page = await getVideos({
       pageIndex: pageNumber,
       pageSize: query.pageSize,
-      keyword: query.keyword,
+      keyword: "",
     })
     rawPage.value = page
     if (pageNumber === 1) emptyResponse.value = page === null
@@ -236,11 +239,43 @@ function openPlayer(id: string) {
 }
 
 function tryAutoPlay() {
-  void playerRef.value?.play().catch(() => {})
+  void playerRef.value?.play().catch(() => { })
 }
 
 function onPlayerError() {
   playerError.value = '视频加载失败：源文件可能为空、已损坏，或浏览器不支持该视频编码'
+}
+
+async function reload() {
+  pageCache.value.clear()
+  pendingPages.clear()
+  total.value = 0
+  activeGlobal.value = 0
+  loading.value = true
+  try {
+    await fetchPage(1)
+    await ensureAround()
+  } finally {
+    loading.value = false
+  }
+}
+
+async function onSync() {
+  if (syncing.value) return
+  syncing.value = true
+  try {
+    const result = await syncVideos()
+    if (result) {
+      ElMessage.success(
+        `同步完成：扫描 ${result.scanned} 个，新增 ${result.inserted}，更新 ${result.updated}，移除 ${result.removed}`,
+      )
+      await reload()
+    }
+  } catch (exception) {
+    ElMessage.error(messageOf(exception))
+  } finally {
+    syncing.value = false
+  }
 }
 
 onMounted(async () => {
@@ -256,44 +291,31 @@ onMounted(async () => {
     <header class="page-header">
       <div>
         <RouterLink to="/" class="back-link">← 返回工作台</RouterLink>
-        <h1>视频列表</h1>
+        <div class="title-row">
+          <h1>视频列表</h1>
+          <span class="total-badge">共 {{ total }} 个视频</span>
+        </div>
         <p>扇形堆叠卡片 · 滚轮或左右按钮翻页 · 点击卡片切换下一个视频</p>
       </div>
-      <el-button :disabled="loading" @click="dialogVisible = true">查看响应</el-button>
+      <div class="header-actions">
+        <el-button type="primary" :loading="syncing" @click="onSync">同步视频数据</el-button>
+        <el-button :disabled="loading" @click="dialogVisible = true">查看响应</el-button>
+      </div>
     </header>
 
     <section class="panel">
       <el-alert v-if="error" :title="error" type="error" show-icon :closable="false" class="hint" />
-      <el-alert
-        v-else-if="emptyResponse"
-        title="接口当前返回空响应（后端 /videos/page 尚未返回数据），页面已按空列表展示。"
-        type="info"
-        show-icon
-        :closable="false"
-        class="hint"
-      />
+      <el-alert v-else-if="emptyResponse" title="接口当前返回空响应（后端 /videos/page 尚未返回数据），页面已按空列表展示。" type="info" show-icon
+        :closable="false" class="hint" />
 
-      <div
-        v-loading="loading"
-        class="stage"
-        tabindex="0"
-        @wheel.prevent="onWheel"
-        @keydown.left.prevent="prev"
-        @keydown.right.prevent="next"
-      >
+      <div v-loading="loading" class="stage" tabindex="0" @wheel.prevent="onWheel" @keydown.left.prevent="prev"
+        @keydown.right.prevent="next">
         <div v-if="!videos.length && !loading" class="stage-empty">暂无视频数据</div>
 
         <div class="deck">
-          <article
-            v-for="card in visibleCards"
-            :key="card.item.id"
-            class="video-card"
-            :class="{ 'is-active': card.offset === 0 }"
-            :style="cardStyle(card)"
-            @mouseenter="hoveredId = card.item.id"
-            @mouseleave="onCardLeave(card.item.id)"
-            @click="onCardClick(card)"
-          >
+          <article v-for="card in visibleCards" :key="card.item.id" class="video-card"
+            :class="{ 'is-active': card.offset === 0 }" :style="cardStyle(card)" @mouseenter="hoveredId = card.item.id"
+            @mouseleave="onCardLeave(card.item.id)" @click="onCardClick(card)">
             <div class="card-cover">
               <img :src="proxiedUrl(card.item.thumbnailUrl)" :alt="card.item.name" loading="lazy" />
               <span v-if="!isPlayable(card.item.size)" class="card-badge">文件为空</span>
@@ -305,22 +327,13 @@ onMounted(async () => {
                 <span v-if="card.item.durationSeconds != null">
                   {{ formatDuration(card.item.durationSeconds) }}
                 </span>
-                <button
-                  v-else
-                  class="duration-btn"
-                  type="button"
-                  :disabled="!!durationLoading[card.item.id]"
-                  @click.stop="loadDuration(card.item.id)"
-                >
+                <button v-else class="duration-btn" type="button" :disabled="!!durationLoading[card.item.id]"
+                  @click.stop="loadDuration(card.item.id)">
                   {{ durationFailed[card.item.id] ? '重试探测' : '获取时长' }}
                 </button>
               </div>
               <div class="card-actions">
-                <button
-                  class="card-play"
-                  type="button"
-                  @click.stop="openPlayer(card.item.id)"
-                >
+                <button class="card-play" type="button" @click.stop="openPlayer(card.item.id)">
                   播放
                 </button>
               </div>
@@ -331,10 +344,7 @@ onMounted(async () => {
         <button class="nav-btn nav-btn--prev" type="button" :disabled="!canPrev" @click="prev">‹</button>
         <button class="nav-btn nav-btn--next" type="button" :disabled="!canNext" @click="next">›</button>
 
-        <div
-          class="page-indicator"
-          :aria-label="'当前第 ' + currentPage + ' 页，共 ' + totalPages + ' 页'"
-        >
+        <div class="page-indicator" :aria-label="'当前第 ' + currentPage + ' 页，共 ' + totalPages + ' 页'">
           <div class="page-indicator__row">
             <span class="page-indicator__label">当前页</span>
             <span class="page-indicator__current">{{ currentPage }}</span>
@@ -353,22 +363,10 @@ onMounted(async () => {
       <pre class="raw">{{ rawPage ? JSON.stringify(rawPage, null, 2) : '（空响应）' }}</pre>
     </el-dialog>
 
-    <el-dialog
-      v-model="playerVisible"
-      :title="playing?.name ?? '视频播放'"
-      width="min(920px, 94vw)"
-      destroy-on-close
-      @opened="tryAutoPlay"
-    >
-      <video
-        v-if="playing"
-        ref="playerRef"
-        class="player"
-        controls
-        preload="metadata"
-        :src="playing.videoUrl"
-        @error="onPlayerError"
-      />
+    <el-dialog v-model="playerVisible" :title="playing?.name ?? '视频播放'" width="min(920px, 94vw)" destroy-on-close
+      @opened="tryAutoPlay">
+      <video v-if="playing" ref="playerRef" class="player" controls preload="metadata" :src="playing.videoUrl"
+        @error="onPlayerError" />
       <el-alert v-if="playerError" :title="playerError" type="error" show-icon :closable="false" />
     </el-dialog>
   </main>
@@ -392,6 +390,7 @@ onMounted(async () => {
     radial-gradient(circle at 96% 2%, rgba(167, 243, 208, 0.28), transparent 38%),
     linear-gradient(160deg, #f4f8f6 0%, #f7f9ff 55%, #fdf8f2 100%);
 }
+
 .page-header {
   flex-shrink: 0;
   display: flex;
@@ -405,6 +404,7 @@ onMounted(async () => {
   border-radius: 20px;
   box-shadow: 0 10px 30px rgba(31, 45, 39, 0.05);
   backdrop-filter: blur(10px);
+
   h1 {
     margin: 8px 0 6px;
     font-size: 27px;
@@ -416,20 +416,49 @@ onMounted(async () => {
     background-clip: text;
     -webkit-text-fill-color: transparent;
   }
+
+  .title-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .total-badge {
+    align-self: flex-start;
+    margin-top: 10px;
+    padding: 5px 12px;
+    font-size: 13px;
+    font-weight: 650;
+    white-space: nowrap;
+    color: #0f766e;
+    background: linear-gradient(100deg, #dbeafe, #ccfbf1);
+    border: 1px solid rgba(20, 184, 166, 0.25);
+    border-radius: 999px;
+  }
+
   p {
     margin: 0;
     font-size: 13px;
     color: var(--videos-muted);
   }
 }
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
 .back-link {
   color: var(--el-color-primary);
   font-size: 13px;
   text-decoration: none;
+
   &:hover {
     text-decoration: underline;
   }
 }
+
 .panel {
   display: flex;
   flex-direction: column;
@@ -442,11 +471,13 @@ onMounted(async () => {
   border-radius: 22px;
   box-shadow: 0 12px 34px rgba(31, 45, 39, 0.06);
 }
+
 .hint {
   flex-shrink: 0;
   margin-bottom: 16px;
   border-radius: 12px;
 }
+
 .stage {
   position: relative;
   flex: 1;
@@ -458,10 +489,12 @@ onMounted(async () => {
   background:
     radial-gradient(circle at 50% 0%, rgba(147, 197, 253, 0.28), transparent 58%),
     linear-gradient(170deg, #f8fbff 0%, #eef5f1 100%);
+
   &:focus-visible {
     border-color: rgba(59, 130, 246, 0.55);
   }
 }
+
 .stage-empty {
   position: absolute;
   inset: 0;
@@ -471,11 +504,13 @@ onMounted(async () => {
   font-size: 14px;
   color: var(--videos-muted);
 }
+
 .deck {
   position: absolute;
   inset: 0;
   transition: transform 0.3s ease;
 }
+
 .video-card {
   position: absolute;
   top: 50%;
@@ -499,32 +534,39 @@ onMounted(async () => {
     border-color 0.3s ease;
   cursor: pointer;
   will-change: transform;
+
   &.is-active {
     border-color: rgba(59, 130, 246, 0.42);
     box-shadow: 0 30px 64px rgba(31, 45, 39, 0.26);
   }
+
   &:not(.is-active) {
     .card-body {
       pointer-events: none;
     }
+
     .card-play {
       pointer-events: auto;
     }
   }
+
   &:hover {
     border-color: rgba(59, 130, 246, 0.72);
     box-shadow: 0 36px 76px rgba(31, 45, 39, 0.34);
+
     .card-cover img {
       transform: scale(1.06);
     }
   }
 }
+
 .card-cover {
   position: relative;
   height: 268px;
   flex-shrink: 0;
   overflow: hidden;
   background: #e9eef0;
+
   img {
     display: block;
     width: 100%;
@@ -532,6 +574,7 @@ onMounted(async () => {
     object-fit: cover;
     transition: transform 0.45s ease;
   }
+
   &::after {
     content: '';
     position: absolute;
@@ -541,6 +584,7 @@ onMounted(async () => {
     pointer-events: none;
   }
 }
+
 .card-badge {
   position: absolute;
   top: 12px;
@@ -553,12 +597,14 @@ onMounted(async () => {
   background: rgba(220, 38, 38, 0.88);
   border-radius: 999px;
 }
+
 .card-actions {
   display: flex;
   align-items: center;
   gap: 12px;
   margin-top: auto;
 }
+
 .card-play {
   flex: 1;
   padding: 10px 18px;
@@ -572,12 +618,14 @@ onMounted(async () => {
   box-shadow: 0 6px 16px rgba(37, 99, 235, 0.24);
   cursor: pointer;
   transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+
   &:hover {
     filter: brightness(1.08);
     transform: translateY(-2px);
     box-shadow: 0 10px 22px rgba(37, 99, 235, 0.32);
   }
 }
+
 .card-body {
   flex: 1;
   display: flex;
@@ -586,6 +634,7 @@ onMounted(async () => {
   padding: 18px 20px 20px;
   min-height: 0;
 }
+
 .card-title {
   margin: 0;
   font-size: 17px;
@@ -595,6 +644,7 @@ onMounted(async () => {
   white-space: nowrap;
   text-overflow: ellipsis;
 }
+
 .card-meta {
   display: flex;
   align-items: center;
@@ -602,6 +652,7 @@ onMounted(async () => {
   font-size: 13px;
   color: var(--videos-muted);
 }
+
 .duration-btn {
   padding: 0;
   color: var(--el-color-primary);
@@ -609,11 +660,13 @@ onMounted(async () => {
   background: none;
   border: 0;
   cursor: pointer;
+
   &:disabled {
     opacity: 0.55;
     cursor: default;
   }
 }
+
 .nav-btn {
   position: absolute;
   top: 50%;
@@ -630,22 +683,27 @@ onMounted(async () => {
   box-shadow: 0 8px 22px rgba(31, 45, 39, 0.12);
   cursor: pointer;
   transition: transform 0.2s ease, opacity 0.2s ease, background 0.2s ease;
+
   &:hover:not(:disabled) {
     transform: scale(1.1);
     background: #fff;
     box-shadow: 0 12px 28px rgba(59, 130, 246, 0.24);
   }
+
   &:disabled {
     opacity: 0.35;
     cursor: not-allowed;
   }
 }
+
 .nav-btn--prev {
   left: 20px;
 }
+
 .nav-btn--next {
   right: 20px;
 }
+
 .page-indicator {
   position: absolute;
   bottom: 20px;
@@ -660,6 +718,7 @@ onMounted(async () => {
   pointer-events: none;
   user-select: none;
 }
+
 .page-indicator__row {
   display: flex;
   align-items: baseline;
@@ -667,11 +726,13 @@ onMounted(async () => {
   font-variant-numeric: tabular-nums;
   line-height: 1;
 }
+
 .page-indicator__label {
   font-size: 11px;
   letter-spacing: 0.08em;
   color: #87978f;
 }
+
 .page-indicator__current {
   font-size: 25px;
   font-weight: 750;
@@ -682,15 +743,18 @@ onMounted(async () => {
   background-clip: text;
   -webkit-text-fill-color: transparent;
 }
+
 .page-indicator__slash {
   font-size: 14px;
   color: #c3cdd0;
 }
+
 .page-indicator__total {
   font-size: 15px;
   font-weight: 650;
   color: #8b9a94;
 }
+
 .page-indicator__track {
   width: 168px;
   height: 4px;
@@ -698,6 +762,7 @@ onMounted(async () => {
   background: rgba(31, 45, 39, 0.13);
   border-radius: 999px;
 }
+
 .page-indicator__fill {
   display: block;
   height: 100%;
@@ -705,6 +770,7 @@ onMounted(async () => {
   border-radius: 999px;
   transition: width 0.45s ease;
 }
+
 .raw {
   margin: 0;
   padding: 16px;
@@ -718,6 +784,7 @@ onMounted(async () => {
   background: #12251f;
   border-radius: 14px;
 }
+
 .player {
   display: block;
   width: 100%;
@@ -725,41 +792,51 @@ onMounted(async () => {
   background: #000;
   border-radius: 12px;
 }
+
 @media (max-width: 1200px) {
   .deck {
     transform: scale(0.8);
   }
 }
+
 @media (max-width: 900px) {
   .deck {
     transform: scale(0.66);
   }
 }
+
 @media (max-width: 640px) {
   .videos-page {
     padding: 16px 12px 24px;
   }
+
   .page-header {
     padding: 16px;
   }
+
   .panel {
     padding: 12px;
   }
+
   .stage {
     min-height: 400px;
   }
+
   .deck {
     transform: scale(0.48);
   }
+
   .nav-btn {
     width: 40px;
     height: 40px;
     margin-top: -20px;
     font-size: 26px;
   }
+
   .nav-btn--prev {
     left: 10px;
   }
+
   .nav-btn--next {
     right: 10px;
   }

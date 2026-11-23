@@ -17,7 +17,7 @@ public class PageResult<T> {
         this.list = List.copyOf(list);
     }
 
-    public static <T> PageResult<T> of(long total, List<T> list) {
+    public static <T> PageResult<T> of1(long total, List<T> list) {
         return new PageResult<>(total, list);
     }
 }

@@ -1,5 +1,6 @@
 package com.joykit.common.result;
 
+import com.joykit.common.annotation.Trim;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -29,6 +30,7 @@ public class PageParams implements Serializable {
     @Schema(description = "每页数量", defaultValue = "10")
     private Integer pageSize = 10;
 
+    @Trim
     @Size(max = 100)
     @Schema(description = "关键字")
     private String keyword;
