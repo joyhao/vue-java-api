@@ -13,6 +13,11 @@ import lombok.Data;
 public class UserPO {
     @TableId(type = IdType.AUTO)
     private Long id;
+    private String account;
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    @lombok.ToString.Exclude
+    private String passwordHash;
+    private Instant lastLoginAt;
     private String name;
     @TableField(value = "avatar_url", updateStrategy = FieldStrategy.ALWAYS)
     private String avatarUrl;
