@@ -1,53 +1,59 @@
 <script setup lang="ts">
 /* global console */
-import { ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import request from '@/api/request'
 import { ElMessage } from 'element-plus'
 import { getErrorMessage as messageOf } from '@/api/errors'
-import { fetchTestData } from '@/api/test'
 
-const testing = ref(false)
-const testResult = ref('')
+const router = useRouter()
+const currentUser = ref<{ id: string; account: string; name: string } | null>(null)
+const loggingOut = ref(false)
+const displayName = computed(() => currentUser.value?.name || currentUser.value?.account || '加载中…')
+const avatarText = computed(() => currentUser.value ? Array.from(displayName.value)[0]?.toUpperCase() : '…')
 
-async function runTest() {
-  testing.value = true
-  testResult.value = ''
+onMounted(async () => {
   try {
-    const data = await fetchTestData()
-    console.log('[POST /api/users/test] 返回数据:', data)
-    testResult.value = JSON.stringify(data, null, 2) ?? ''
-    ElMessage.success('请求成功，返回数据已输出到控制台')
-  } catch (exception) {
-    console.error('[POST /api/users/test] 请求失败:', exception)
-    testResult.value = messageOf(exception)
-    ElMessage.error(messageOf(exception))
+    const response = await request.get('/auth/me')
+    currentUser.value = response.data.data
+  } catch (error) {
+    ElMessage.error(messageOf(error))
+  }
+})
+
+async function logout() {
+  if (loggingOut.value) return
+  loggingOut.value = true
+  try {
+    await request.post('/auth/logout')
+    currentUser.value = null
+    await router.replace('/login')
+  } catch (error) {
+    ElMessage.error(messageOf(error))
   } finally {
-    testing.value = false
+    loggingOut.value = false
   }
 }
+
 </script>
 
 <template>
   <main class="home">
-    <header class="hero">
-      <div class="hero__content">
-        <span class="hero__badge"><i class="hero__badge-dot" />工作台 · Workspace</span>
-        <h1>joykit</h1>
-        <p>一个轻量的前后端练习工作台，集中管理用户、视频内容与接口调试。</p>
-        <div class="hero__meta">
-          <span>Vue 3 · Element Plus</span>
-          <span>Spring Boot · PostgreSQL</span>
+    <div class="account-bar">
+      <div class="profile-menu">
+        <button class="profile-trigger" type="button" aria-label="用户菜单">
+          <span class="account-avatar" aria-hidden="true">{{ avatarText }}</span>
+          <strong :title="displayName">{{ displayName }}</strong>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m7 10 5 5 5-5" /></svg>
+        </button>
+        <div class="profile-dropdown">
+          <button class="profile-logout" type="button" :disabled="loggingOut" @click="logout">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M9 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h4M14 8l4 4-4 4M8 12h13" /></svg>
+            {{ loggingOut ? '退出中…' : '退出登录' }}
+          </button>
         </div>
       </div>
-      <div class="hero__art" aria-hidden="true">
-        <div class="hero__orb" />
-        <div class="hero__card hero__card--back" />
-        <div class="hero__card hero__card--front">
-          <span class="hero__bar" />
-          <span class="hero__bar hero__bar--short" />
-          <span class="hero__block" />
-        </div>
-      </div>
-    </header>
+    </div>
 
     <section class="section" aria-label="功能列表">
       <div class="section__head">
@@ -106,44 +112,26 @@ async function runTest() {
       </div>
     </section>
 
-    <section class="section" aria-label="接口测试">
-      <div class="section__head">
-        <h2>接口调试</h2>
-        <span>POST /api/users/test</span>
-      </div>
-      <div class="test-panel">
-        <span class="test-panel__icon">
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.8"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true"
-          >
-            <rect x="2.5" y="4" width="19" height="16" rx="3" />
-            <path d="m7 9 3 3-3 3" />
-            <path d="M13 15h4" />
-          </svg>
-        </span>
-        <div class="test-panel__body">
-          <h3>连通性检查</h3>
-          <p>调用测试接口，返回数据会打印到浏览器控制台，并展示在下方。</p>
-          <div class="test-panel__actions">
-            <el-button type="primary" :loading="testing" @click="runTest">运行测试</el-button>
-            <span v-if="testResult" class="test-panel__status">已完成</span>
-          </div>
-          <pre v-if="testResult" class="test-panel__result">{{ testResult }}</pre>
-        </div>
-      </div>
-    </section>
-
     <footer class="home__footer">joykit · 前后端练习项目</footer>
   </main>
 </template>
 
 <style scoped lang="scss">
+.profile-menu { position: relative; margin-left: auto; z-index: 5; padding-bottom: 10px; margin-bottom: -10px; }
+.profile-trigger { display: flex; align-items: center; gap: 10px; border: 1px solid #e1eae5; border-radius: 14px; padding: 7px 11px 7px 7px; background: #ffffffc9; color: #365448; cursor: pointer; font: inherit; strong { max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 13px; font-weight: 600; } > svg { width: 16px; height: 16px; color: #8a9c92; } }
+.profile-dropdown { position: absolute; top: 100%; right: 0; width: 168px; padding: 6px; background: white; border: 1px solid #e4ece7; border-radius: 12px; box-shadow: 0 12px 32px #203b3414; visibility: hidden; opacity: 0; transform: translateY(-4px); transition: opacity .15s, transform .15s, visibility .15s; }
+.profile-menu:hover .profile-dropdown, .profile-menu:focus-within .profile-dropdown { visibility: visible; opacity: 1; transform: translateY(0); }
+.profile-logout { display: flex; align-items: center; gap: 9px; width: 100%; border: 0; padding: 11px 12px; border-radius: 8px; background: transparent; color: #b35461; font: inherit; font-size: 13px; cursor: pointer; svg { width: 17px; height: 17px; } &:hover { background: #fff1f3; } &:disabled { opacity: .6; cursor: wait; } }
+.profile-trigger:focus-visible, .profile-logout:focus-visible { outline: 2px solid #26705b; outline-offset: 3px; }
+
+.account-bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 22px; }
+.account-bar__label { color: #718579; font-size: 13px; }
+.account-bar__user { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.account-avatar { display: grid; place-items: center; width: 42px; height: 42px; flex-shrink: 0; border-radius: 14px; background: linear-gradient(135deg, #dbeafe, #ccfbf1); color: #287764; font-size: 18px; font-weight: 700; border: 1px solid #d9e9e3; }
+.account-info { display: flex; flex-direction: column; gap: 3px; min-width: 0; strong { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; color: #344e43; } > span { font-size: 11px; color: #87988e; } }
+.logout-button { display: flex; align-items: center; gap: 6px; flex-shrink: 0; padding: 9px 12px; margin-left: 8px; border: 1px solid #dfe8e2; border-radius: 9px; color: #60776a; background: #ffffffc9; font: inherit; font-size: 12px; cursor: pointer; svg { width: 16px; height: 16px; } &:hover:not(:disabled) { color: #b04d58; border-color: #ebcfd2; background: #fff8f8; } &:disabled { opacity: .6; cursor: wait; } &:focus-visible { outline: 2px solid #26705b; outline-offset: 3px; } }
+@media (max-width: 480px) { .account-bar__label { display: none; } .account-bar__user { width: 100%; } .account-info { flex: 1; } .account-info strong { max-width: 140px; } .logout-button { margin-left: auto; } }
+
 .home {
   --home-ink: #1f2d27;
   --home-muted: #78867f;
