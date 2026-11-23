@@ -34,22 +34,13 @@ async function submit() {
 
 <template>
   <main class="login-page">
-    <header class="page-header">
-      <a class="brand" href="/login" aria-label="joykit 登录">
-        <svg class="brand-symbol" viewBox="0 0 32 32" fill="none" aria-hidden="true"><rect x="3" y="3" width="12" height="12" rx="4" fill="currentColor" /><rect x="18" y="3" width="11" height="12" rx="4" fill="currentColor" opacity=".45" /><rect x="3" y="18" width="12" height="11" rx="4" fill="currentColor" opacity=".45" /><rect x="18" y="18" width="11" height="11" rx="4" fill="currentColor" /></svg>
-        joykit<span class="brand-divider" /><span class="workspace-label">个人工作台</span>
-      </a>
-      <span class="header-note">你的内容，你的空间。</span>
-    </header>
-
+    <div class="starfield" aria-hidden="true">
+      <span v-for="star in 90" :key="star" class="star" :style="{ left: `${(star * 37.37) % 100}%`, top: `${(star * 19.73) % 100}%`, '--size': `${star % 7 === 0 ? 3 : star % 3 === 0 ? 2 : 1}px`, '--delay': `${-(star % 13)}s`, '--duration': `${3 + star % 5}s` }" />
+      <span class="meteor meteor-one" /><span class="meteor meteor-two" />
+    </div>
     <section class="login-content">
-      <div class="intro">
-        <span class="welcome-label">YOUR SPACE. YOUR FLOW.</span>
-        <h1>很高兴，再次见到你<span>。</span></h1>
-        <p>登录 joykit，回到属于你的工作空间。</p>
-      </div>
       <section class="login-card" aria-label="账号登录">
-        <div class="card-heading"><h2>账号登录</h2><span class="secure-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6l8-3Z" /><path d="m8 12 3 3 5-6" /></svg>安全访问</span></div>
+        <div class="card-heading"><h2>登录</h2></div>
         <form novalidate @submit.prevent="submit">
           <div class="field">
             <label for="account">账号</label>
@@ -71,11 +62,8 @@ async function submit() {
           <div class="form-options"><label class="remember"><input v-model="form.remember" type="checkbox" />记住账号</label><button type="button" class="text-button" @click="ElMessage.info('请联系管理员重置密码。')">忘记密码？</button></div>
           <button type="submit" class="submit-button" :disabled="submitting" :aria-busy="submitting"><span>{{ submitting ? '正在登录…' : '登录工作台' }}</span><svg v-if="!submitting" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 12h16m-6-6 6 6-6 6" /></svg></button>
         </form>
-        <div class="card-footer"><span class="status-dot" />专注于重要的事，其他的交给 joykit。</div>
       </section>
-      <p class="session-note">为保障账号安全，长时间未操作后需重新登录。</p>
     </section>
-    <footer class="page-footer"><span>© 2026 joykit. All rights reserved.</span><span>简单一点，专注多一点。</span></footer>
   </main>
 </template>
 
@@ -85,8 +73,8 @@ async function submit() {
   display: flex;
   flex-direction: column;
   padding: 30px 48px 24px;
-  color: #202b45;
-  background: radial-gradient(ellipse at 50% 18%, #e8edff 0, transparent 48%), radial-gradient(ellipse at 80% 75%, #e9f5f8 0, transparent 45%), #f7f9fc;
+  color: #e6ecff;
+  background: radial-gradient(ellipse at 22% 24%, #30306c70 0, transparent 48%), radial-gradient(ellipse at 78% 68%, #143e6460 0, transparent 48%), radial-gradient(ellipse at 50% 110%, #40367570, transparent 55%), #070c1c;
   position: relative;
   isolation: isolate;
   &::before {
@@ -142,5 +130,30 @@ button:focus-visible, a:focus-visible, input[type='checkbox']:focus-visible { ou
   .login-card { padding: 27px 24px; }
   .page-footer { justify-content: center; }
 }
-@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; } }
+.login-page::before { display: none; }
+.starfield { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: -1; }
+.star { position: absolute; width: var(--size); height: var(--size); border-radius: 50%; background: #e4ecff; box-shadow: 0 0 7px #b4c8ff80; animation: twinkle var(--duration) ease-in-out var(--delay) infinite alternate; }
+.meteor { position: absolute; width: 180px; height: 1px; background: linear-gradient(90deg, transparent, #bccaff); opacity: 0; transform: rotate(-35deg); animation: shooting-star 12s linear infinite; }
+.meteor-one { left: 65%; top: 12%; }
+.meteor-two { left: 38%; top: 28%; animation-delay: 6s; width: 110px; }
+.brand { color: #e7ecff; }
+.brand-symbol { color: #9caaff; }
+.brand-divider { background: #ffffff24; }
+.workspace-label, .header-note, .page-footer { color: #94a0be; }
+.welcome-label { color: #a7b5ee; }
+h1 { color: #f0f3ff; text-shadow: 0 2px 30px #9bafff30; span { color: #a8b8ff; } }
+.intro p, .session-note { color: #94a2c3; }
+.login-card { background: linear-gradient(140deg, #1c2941b3, #131c33cc); border-color: #b6c9ff26; backdrop-filter: blur(24px); box-shadow: 0 24px 80px #00000040, inset 0 1px 0 #ffffff0b; }
+.secure-label { color: #9eafce; svg { color: #8dcabb; } }
+.field > label { color: #c1cde5; }
+.input-wrap { background: #090f2180; border-color: #b5caff29; color: #8497bf; &:focus-within { background: #0c152b; border-color: #93a6ff; box-shadow: 0 0 0 3px #8b9fff16; } input { color: #eef2ff; &::placeholder { color: #7787a8; } } &.invalid { border-color: #ee8eaa; } }
+.password-toggle { color: #8d9fc3; &:hover { color: #c1ccff; } }
+.field-error { color: #ff9db7; }
+.remember { color: #a4b1cf; input { accent-color: #8b9df5; } }
+.text-button { color: #adbaff; &:hover { color: #d7dfff; } }
+.submit-button { border-color: #a2b0ff50; background: linear-gradient(110deg, #687de5, #7964cf); box-shadow: 0 5px 24px #6c71e633; &:hover:not(:disabled) { box-shadow: 0 6px 30px #7a83f755; } }
+.card-footer { border-color: #ffffff12; color: #93a3c1; }
+@keyframes twinkle { from { opacity: .2; transform: scale(.8); } to { opacity: .95; transform: scale(1.2); } }
+@keyframes shooting-star { 0%, 82% { opacity: 0; transform: translate(0, 0) rotate(-35deg); } 84% { opacity: .8; } 94%, 100% { opacity: 0; transform: translate(-450px, 315px) rotate(-35deg); } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } .star { opacity: .65; } }
 </style>
