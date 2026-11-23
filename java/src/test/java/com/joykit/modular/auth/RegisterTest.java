@@ -65,7 +65,8 @@ class RegisterTest {
         var userMapper = mock(com.joykit.modular.user.mapper.UserMapper.class);
         var impl = new com.joykit.modular.auth.service.impl.AuthServiceImpl(
                 mock(com.joykit.modular.auth.mapper.AuthMapper.class), userMapper,
-                new com.joykit.modular.auth.mapping.AuthMapping());
+                new com.joykit.modular.auth.mapping.AuthMapping(), mock(com.joykit.modular.auth.service.JwtTokens.class),
+                mock(com.joykit.modular.auth.service.RedisSessions.class));
         impl.register("test_user", "TestPassword123");
         var user = ArgumentCaptor.forClass(com.joykit.modular.user.po.UserPO.class);
         verify(userMapper).insert(user.capture());

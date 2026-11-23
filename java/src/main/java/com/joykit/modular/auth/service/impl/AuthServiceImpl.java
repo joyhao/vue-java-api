@@ -22,6 +22,8 @@ public class AuthServiceImpl implements AuthService {
     private final AuthMapper authMapper;
     private final UserMapper userMapper;
     private final AuthMapping authMapping;
+    private final com.joykit.modular.auth.service.JwtTokens jwtTokens;
+    private final com.joykit.modular.auth.service.RedisSessions sessions;
     private final String dummyHash = PasswordHasher.hash("not-a-real-user-password");
 
     @Override
@@ -51,64 +53,40 @@ public class AuthServiceImpl implements AuthService {
         boolean valid = PasswordHasher.matches(password,
                 user == null || user.getPasswordHash() == null ? dummyHash : user.getPasswordHash());
         if (user == null || !valid || !Integer.valueOf(1).equals(user.getStatus())) return null;
-        byte[] random = new byte[32];
-        new SecureRandom().nextBytes(random);
-        String token = Base64.getUrlEncoder().withoutPadding().encodeToString(random);
         Instant now = Instant.now();
-        Instant expires = now.plusSeconds(1800);
-        authMapper.saveSession(user.getId(), clientType.name(), digest(token), now, expires);
-        String refreshToken = randomToken();
-        Instant refreshExpires = now.plusSeconds(604800);
-        authMapper.setRefresh(digest(token), digest(refreshToken), refreshExpires);
         authMapper.updateLastLogin(user.getId(), now);
-        return new Login(authMapping.poToIdentity(user, clientType.name()), token, expires, refreshToken, refreshExpires);
+        String sid = java.util.UUID.randomUUID().toString();
+        var login = issue(authMapping.poToIdentity(user, clientType.name()), now.plusSeconds(604800), sid);
+        sessions.start(login.user(), sid, login.refreshToken(), login.refreshExpiresAt());
+        return login;
     }
 
     @Override
-    @Transactional(readOnly = true)
     public Identity authenticate(String token) {
-        if (token == null || !token.matches("[A-Za-z0-9_-]{43}")) return null;
-        String hash = digest(token);
-        UserPO user = authMapper.findByTokenHash(hash);
-        if (user == null) return null;
-        String clientType = authMapper.findClientType(hash);
-        return clientType == null ? null : authMapping.poToIdentity(user, clientType);
+        var claims = jwtTokens.verify(token, "access");
+        return claims != null && sessions.active(claims.user(), claims.sessionId()) ? claims.user() : null;
     }
 
     @Override
-    @Transactional
     public void logout(String token) {
-        if (token != null) authMapper.deleteSession(digest(token));
+        var claims = jwtTokens.verify(token, "access");
+        if (claims != null) sessions.revoke(claims.user(), claims.sessionId());
     }
 
     @Override
-    @Transactional
     public Login refresh(String refreshToken) {
-        if (refreshToken == null || !refreshToken.matches("[A-Za-z0-9_-]{43}")) return null;
-        String previous = digest(refreshToken);
-        var session = authMapper.lockRefresh(previous);
-        if (session == null) return null;
-        UserPO user = authMapper.findEnabledUser(session.userId());
+        var claims = jwtTokens.verify(refreshToken, "refresh");
+        if (claims == null) return null;
+        UserPO user = authMapper.findEnabledUser(claims.user().id());
         if (user == null) return null;
-        String access = randomToken();
-        String next = randomToken();
+        var login = issue(authMapping.poToIdentity(user, claims.user().clientType()), claims.expiresAt(), claims.sessionId());
+        return sessions.rotate(login.user(), claims.sessionId(), refreshToken, login.refreshToken()) ? login : null;
+    }
+
+    private Login issue(Identity user, Instant refreshExpires, String sid) {
         Instant expires = Instant.now().plusSeconds(1800);
-        if (expires.isAfter(session.expires())) expires = session.expires();
-        if (authMapper.rotate(previous, digest(access), digest(next), expires) != 1) return null;
-        return new Login(authMapping.poToIdentity(user, session.clientType()), access, expires, next, session.expires());
-    }
-
-    private static String randomToken() {
-        byte[] bytes = new byte[32];
-        new SecureRandom().nextBytes(bytes);
-        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
-    }
-
-    private static String digest(String token) {
-        try {
-            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(token.getBytes(StandardCharsets.UTF_8)));
-        } catch (java.security.NoSuchAlgorithmException exception) {
-            throw new IllegalStateException(exception);
-        }
+        if (expires.isAfter(refreshExpires)) expires = refreshExpires;
+        return new Login(user, jwtTokens.issue(user, "access", expires, sid), expires,
+                jwtTokens.issue(user, "refresh", refreshExpires, sid), refreshExpires);
     }
 }

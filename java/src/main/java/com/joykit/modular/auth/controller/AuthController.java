@@ -59,7 +59,7 @@ public class AuthController {
         return loginResult(login, request, response);
     }
 
-    public record RefreshDTO(@jakarta.validation.constraints.Size(max = 43) String refreshToken) {}
+    public record RefreshDTO(@jakarta.validation.constraints.Size(max = 4096) String refreshToken) {}
 
     @Operation(summary = "刷新登录凭证")
     @PostMapping("/refresh")

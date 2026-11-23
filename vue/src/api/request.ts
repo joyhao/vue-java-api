@@ -51,7 +51,7 @@ request.interceptors.response.use(
   },
 )
 
-function refreshAccess() {
+export function refreshAccess() {
   if (!refreshing) {
     refreshing = refreshClient.post('/auth/refresh').then((response) => {
       accessToken = response.data?.data?.token || null
