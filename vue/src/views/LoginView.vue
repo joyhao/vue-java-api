@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRoute, useRouter } from 'vue-router'
 import request from '@/api/request'
@@ -8,16 +8,35 @@ import { getErrorMessage } from '@/api/errors'
 const router = useRouter()
 const route = useRoute()
 const rememberedAccount = localStorage.getItem('joykit-account') || ''
-const form = reactive({ account: rememberedAccount, password: '', remember: !!rememberedAccount })
+const isRegister = computed(() => route.name === 'register')
+const form = reactive({ account: rememberedAccount, password: '', confirmPassword: '', remember: !!rememberedAccount })
 const visible = ref(false)
 const submitted = ref(false)
 const submitting = ref(false)
 
+watch(isRegister, () => {
+  submitted.value = false
+  form.password = ''
+  form.confirmPassword = ''
+  visible.value = false
+})
+
 async function submit() {
   submitted.value = true
   if (submitting.value || !form.account.trim() || !form.password) return
+  if (isRegister.value) {
+    if (!/^[A-Za-z][A-Za-z0-9_]{3,31}$/.test(form.account.trim())) return void ElMessage.warning('账号须以字母开头，由4至32位字母、数字或下划线组成')
+    if (form.password.length < 8 || form.password.length > 128) return void ElMessage.warning('密码长度须为8至128位')
+    if (form.password !== form.confirmPassword) return void ElMessage.warning('两次密码不一致')
+  }
   submitting.value = true
   try {
+    if (isRegister.value) {
+      await request.post('/auth/register', { account: form.account.trim(), password: form.password, confirmPassword: form.confirmPassword })
+      ElMessage.success('注册成功，请登录')
+      await router.replace({ name: 'login', query: route.query })
+      return
+    }
     await request.post('/auth/login', { account: form.account.trim(), password: form.password })
     if (form.remember) localStorage.setItem('joykit-account', form.account.trim())
     else localStorage.removeItem('joykit-account')
@@ -40,7 +59,7 @@ async function submit() {
     </div>
     <section class="login-content">
       <section class="login-card" aria-label="账号登录">
-        <div class="card-heading"><h2>登录</h2></div>
+        <div class="card-heading"><h2>{{ isRegister ? '注册' : '登录' }}</h2></div>
         <form novalidate @submit.prevent="submit">
           <div class="field">
             <label for="account">账号</label>
@@ -54,14 +73,23 @@ async function submit() {
             <label for="password">密码</label>
             <div class="input-wrap" :class="{ invalid: submitted && !form.password }">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="3" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></svg>
-              <input id="password" v-model="form.password" name="password" :type="visible ? 'text' : 'password'" autocomplete="current-password" placeholder="请输入你的密码" :aria-invalid="submitted && !form.password" :aria-describedby="submitted && !form.password ? 'password-error' : undefined" />
+              <input id="password" v-model="form.password" name="password" :type="visible ? 'text' : 'password'" :autocomplete="isRegister ? 'new-password' : 'current-password'" placeholder="请输入你的密码" :aria-invalid="submitted && !form.password" :aria-describedby="submitted && !form.password ? 'password-error' : undefined" />
               <button class="password-toggle" type="button" :aria-label="visible ? '隐藏密码' : '显示密码'" :aria-pressed="visible" @click="visible = !visible"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" /><circle cx="12" cy="12" r="3" /><path v-if="visible" d="m3 3 18 18" /></svg></button>
             </div>
             <span v-if="submitted && !form.password" id="password-error" class="field-error">请输入密码</span>
           </div>
-          <div class="form-options"><label class="remember"><input v-model="form.remember" type="checkbox" />记住账号</label><button type="button" class="text-button" @click="ElMessage.info('请联系管理员重置密码。')">忘记密码？</button></div>
-          <button type="submit" class="submit-button" :disabled="submitting" :aria-busy="submitting"><span>{{ submitting ? '正在登录…' : '登录工作台' }}</span><svg v-if="!submitting" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 12h16m-6-6 6 6-6 6" /></svg></button>
+          <div v-if="isRegister" class="field">
+            <label for="confirm-password">确认密码</label>
+            <div class="input-wrap" :class="{ invalid: submitted && form.password !== form.confirmPassword }">
+              <input id="confirm-password" v-model="form.confirmPassword" :type="visible ? 'text' : 'password'" autocomplete="new-password" placeholder="请再次输入密码" />
+            </div>
+          </div>
+          <div v-if="!isRegister" class="form-options"><label class="remember"><input v-model="form.remember" type="checkbox" />记住账号</label><button type="button" class="text-button" @click="ElMessage.info('请联系管理员重置密码。')">忘记密码？</button></div>
+          <button type="submit" class="submit-button" :disabled="submitting" :aria-busy="submitting"><span>{{ submitting ? '提交中…' : isRegister ? '注册账号' : '登录工作台' }}</span><svg v-if="!submitting" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 12h16m-6-6 6 6-6 6" /></svg></button>
         </form>
+        <div style="margin-top: 22px; text-align: center; font-size: 12px; color: #adbaff">
+          <RouterLink :to="{ name: isRegister ? 'login' : 'register', query: route.query }">{{ isRegister ? '已有账号？去登录' : '没有账号？注册' }}</RouterLink>
+        </div>
       </section>
     </section>
   </main>

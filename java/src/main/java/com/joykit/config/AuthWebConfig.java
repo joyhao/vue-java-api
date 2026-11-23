@@ -13,9 +13,11 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @Configuration
 public class AuthWebConfig implements WebMvcConfigurer {
     private final ObjectMapper objectMapper;
+    private final com.joykit.modular.auth.service.AuthService auth;
 
-    public AuthWebConfig(ObjectMapper objectMapper) {
+    public AuthWebConfig(ObjectMapper objectMapper, com.joykit.modular.auth.service.AuthService auth) {
         this.objectMapper = objectMapper;
+        this.auth = auth;
     }
 
     @Override
@@ -35,9 +37,8 @@ public class AuthWebConfig implements WebMvcConfigurer {
                     }
                 }
                 String path = request.getRequestURI().substring(request.getContextPath().length());
-                if ("/api/auth/login".equals(path)) return true;
-                var session = request.getSession(false);
-                if (session != null && session.getAttribute(AuthController.SESSION_USER) != null) return true;
+                if ("/api/auth/login".equals(path) || "/api/auth/register".equals(path) || "/api/auth/refresh".equals(path)) return true;
+                if (auth.authenticate(AuthController.token(request)) != null) return true;
                 response.setStatus(401);
                 response.setContentType("application/json;charset=UTF-8");
                 objectMapper.writeValue(response.getWriter(), Result.fail(401, "登录已过期，请重新登录", null));

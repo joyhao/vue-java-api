@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, type CSSProperties, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
+import AuthenticatedImage from '@/components/AuthenticatedImage.vue'
 import { getErrorMessage as messageOf } from '@/api/errors'
 import {
   getVideoDuration,
@@ -81,6 +82,10 @@ function proxiedUrl(url?: string) {
   if (!url) return ''
   const match = /^https?:\/\/[^/]+(\/.*)$/i.exec(url)
   return match ? match[1] : url
+}
+
+function thumbnailRequestUrl(url?: string) {
+  return proxiedUrl(url).replace(/^\/api\//, '/')
 }
 
 function isPlayable(size?: number) {
@@ -317,7 +322,7 @@ onMounted(async () => {
             :class="{ 'is-active': card.offset === 0 }" :style="cardStyle(card)" @mouseenter="hoveredId = card.item.id"
             @mouseleave="onCardLeave(card.item.id)" @click="onCardClick(card)">
             <div class="card-cover">
-              <img :src="proxiedUrl(card.item.thumbnailUrl)" :alt="card.item.name" loading="lazy" />
+              <AuthenticatedImage :src="thumbnailRequestUrl(card.item.thumbnailUrl)" :alt="card.item.name" />
               <span v-if="!isPlayable(card.item.size)" class="card-badge">文件为空</span>
             </div>
             <div class="card-body">

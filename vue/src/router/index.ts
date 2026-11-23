@@ -6,6 +6,7 @@ const router = createRouter({
   routes: [
     { path: '/', name: 'home', component: () => import('@/views/HomeView.vue') },
     { path: '/login', name: 'login', component: () => import('@/views/LoginView.vue') },
+    { path: '/register', name: 'register', component: () => import('@/views/LoginView.vue') },
     { path: '/users', name: 'users', component: () => import('@/views/UsersView.vue') },
     { path: '/videos', name: 'videos', component: () => import('@/views/VideosView.vue') },
     { path: '/:pathMatch(.*)*', redirect: '/' },
@@ -13,7 +14,7 @@ const router = createRouter({
 })
 
 router.beforeEach(async (to) => {
-  if (to.name === 'login') return true
+  if (to.name === 'login' || to.name === 'register') return true
   try {
     await request.get('/auth/me')
     return true
