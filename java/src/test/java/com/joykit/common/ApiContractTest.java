@@ -66,6 +66,13 @@ class ApiContractTest {
     }
 
     @Test
+    void sessionStoreOutageIsReportedAsServiceUnavailable() throws Exception {
+        mvc.perform(get("/test/redis")).andExpect(status().isServiceUnavailable())
+            .andExpect(jsonPath("$.code").value(503))
+            .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("secret"))));
+    }
+
+    @Test
     void malformedJsonAndUnsupportedMethodAreUnified() throws Exception {
         mvc.perform(post("/test/validate").contentType("application/json").content("{"))
             .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value(400));
@@ -87,6 +94,9 @@ class ApiContractTest {
         }
         @GetMapping("/test/database") void database() {
             throw new DataAccessResourceFailureException("secret SQL connection details");
+        }
+        @GetMapping("/test/redis") void redis() {
+            throw new org.springframework.data.redis.RedisConnectionFailureException("secret redis address");
         }
     }
 

@@ -6,7 +6,6 @@ import com.joykit.common.constants.ApiConstants;
 import com.joykit.modular.user.docs.UserApiDocs;
 import com.joykit.modular.user.dto.UserIdsDTO;
 import com.joykit.modular.user.dto.UserClearDTO;
-import com.joykit.modular.user.po.Employee;
 import com.joykit.modular.user.vo.UserDeleteVO;
 import com.joykit.modular.user.vo.UserVO;
 import com.joykit.modular.user.dto.UserSaveDTO;
@@ -16,11 +15,6 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-
-import java.sql.Array;
-import java.util.*;
-import java.util.stream.Collectors;
-
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -43,33 +37,6 @@ public class UserController {
     public Result<PageResult<UserVO>> list(@Valid @RequestBody UserQueryDTO dto) {
         return userService.findPage(dto);
     }
-
-
-    /**
-     * 测试数组自身的方法，以及 Arrays 工具类提供的数组操作。
-     * 返回字符串数组，由 Spring MVC 序列化为 JSON 数组，供前端控制台查看。
-     */
-    @PostMapping("/test")
-    public Object test() {
-        Employee[] employees = {
-                new Employee("张三", "开发部", 28, 8500.0),
-                new Employee("李四", "测试部", 24, 6000.0),
-                new Employee("王五", "开发部", 32, 12000.0),
-                new Employee("赵六", "运营部", 29, 7000.0),
-                new Employee("钱七", "开发部", 25, 9000.0),
-                new Employee("孙八", "测试部", 35, 11000.0)
-        };
-//      List<String> names =   Arrays.stream(employees).filter(item-> {
-//            return  item.department().startsWith("开发部");
-//        }).map(item->item.name()).collect(Collectors.toList());
-
-     //   List<Employee> p =   Arrays.stream(employees).sorted(Comparator.comparingDouble(Employee::salary)).limit(2).toList();
-
-        Map<String, List<Employee>> p =  Arrays.stream(employees).collect(Collectors.groupingBy(item -> item.department().substring(0, item.department().length() )));
-
-        return p;
-    }
-
 
     @Operation(summary = UserApiDocs.GET_SUMMARY, description = UserApiDocs.GET_DESCRIPTION)
     @GetMapping("/{id}")

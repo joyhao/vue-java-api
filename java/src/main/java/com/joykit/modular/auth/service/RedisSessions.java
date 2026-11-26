@@ -14,6 +14,9 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 public class RedisSessions {
+    /** 刷新结果：ROTATED 已轮换；NOT_FOUND 会话不存在、已失效或不属于该凭证；REPLAYED 旧凭证被重放，会话已吊销 */
+    public enum Rotation { ROTATED, NOT_FOUND, REPLAYED }
+
     private final StringRedisTemplate redis;
     private static final DefaultRedisScript<Long> ROTATE = loadScript("lua/auth/rotate-session.lua");
     private static final DefaultRedisScript<Long> DELETE = loadScript("lua/auth/revoke-session.lua");
@@ -34,9 +37,11 @@ public class RedisSessions {
         return value != null && value.startsWith(sid + ":");
     }
 
-    public boolean rotate(AuthService.Identity user, String sid, String oldRefresh, String nextRefresh) {
-        return Long.valueOf(1).equals(redis.execute(ROTATE, List.of(key(user)),
-                sid + ":" + hash(oldRefresh), sid + ":" + hash(nextRefresh)));
+    public Rotation rotate(AuthService.Identity user, String sid, String oldRefresh, String nextRefresh) {
+        Long result = redis.execute(ROTATE, List.of(key(user)),
+                sid + ":" + hash(oldRefresh), sid + ":" + hash(nextRefresh), sid);
+        if (Long.valueOf(1).equals(result)) return Rotation.ROTATED;
+        return Long.valueOf(-1).equals(result) ? Rotation.REPLAYED : Rotation.NOT_FOUND;
     }
 
     public void revoke(AuthService.Identity user, String sid) {

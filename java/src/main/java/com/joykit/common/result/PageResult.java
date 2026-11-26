@@ -7,12 +7,12 @@ import lombok.Getter;
 @Getter
 @Schema(description = "结果分页")
 public class PageResult<T> {
-    @Schema(description = "总记录数")
-    private final long total;
+    @Schema(description = "总记录数；未请求统计时为 null")
+    private final Long total;
     @Schema(description = "数据列表")
     private final List<T> list;
 
-    public PageResult(long total, List<T> list) {
+    public PageResult(Long total, List<T> list) {
         this.total = total;
         this.list = List.copyOf(list);
     }

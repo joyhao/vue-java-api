@@ -46,24 +46,39 @@ const rules: FormRules = {
   ],
 }
 
-async function loadUsers() {
+let requestSeq = 0
+
+// withCount 为 false 时跳过总数统计，只用于总数已知的纯翻页
+async function loadUsers(options: { withCount?: boolean } = {}) {
+  const seq = ++requestSeq
+  const withCount = options.withCount ?? true
   loading.value = true
   error.value = ''
   try {
-    let page = await getUsers({ ...query })
-    const lastPage = Math.max(1, Math.ceil(page.total / query.pageSize))
-    if (query.pageNumber > lastPage) {
-      query.pageNumber = lastPage
-      page = await getUsers({ ...query })
+    let page = await getUsers({ ...query, withCount })
+    if (seq !== requestSeq) return
+    if (withCount) {
+      const lastPage = Math.max(1, Math.ceil((page.total ?? 0) / query.pageSize))
+      if (query.pageNumber > lastPage) {
+        query.pageNumber = lastPage
+        page = await getUsers({ ...query, withCount })
+        if (seq !== requestSeq) return
+      }
+      if (page.total === null) throw new Error('分页响应缺少总数')
+      total.value = page.total
     }
     users.value = page.list
-    total.value = page.total
     selected.value = []
   } catch (exception) {
+    if (seq !== requestSeq) return
     error.value = messageOf(exception)
   } finally {
-    loading.value = false
+    if (seq === requestSeq) loading.value = false
   }
+}
+
+function changePage() {
+  void loadUsers({ withCount: false })
 }
 
 function search() {
@@ -177,7 +192,7 @@ function resizePage() {
 function formatDate(value: string) {
   return new Date(value).toLocaleString('zh-CN', { hour12: false })
 }
-onMounted(loadUsers)
+onMounted(() => void loadUsers())
 </script>
 
 <template>
@@ -202,7 +217,7 @@ onMounted(loadUsers)
           @clear="search"
         />
         <el-button :disabled="busy" @click="search">查询</el-button>
-        <el-button :disabled="busy" @click="loadUsers">刷新</el-button>
+        <el-button :disabled="busy" @click="loadUsers()">刷新</el-button>
         <div class="toolbar__spacer" />
         <span class="selection">已选 {{ selected.length }} 项</span>
         <el-button type="danger" plain :disabled="busy || !selected.length" @click="removeUsers()"
@@ -222,8 +237,8 @@ onMounted(loadUsers)
       />
       <div class="table-container">
         <el-table
-          height="100%"
           v-loading="loading || deleting"
+          height="100%"
           :data="users"
           row-key="id"
           empty-text="暂无用户，请新增用户或调整查询条件"
@@ -280,7 +295,7 @@ onMounted(loadUsers)
           :disabled="busy"
           layout="total, sizes, prev, pager, next"
           background
-          @current-change="loadUsers"
+          @current-change="changePage"
           @size-change="resizePage"
         />
       </div>

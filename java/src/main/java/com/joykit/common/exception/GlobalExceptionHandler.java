@@ -10,6 +10,7 @@ import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
+import org.springframework.data.redis.RedisConnectionFailureException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -48,6 +49,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             case NOT_FOUND -> HttpStatus.NOT_FOUND;
             case CONFLICT -> HttpStatus.CONFLICT;
             case FORBIDDEN -> HttpStatus.FORBIDDEN;
+            case RATE_LIMITED -> HttpStatus.TOO_MANY_REQUESTS;
         };
         return response(status, exception.getMessage(), null, new HttpHeaders(), request);
     }
@@ -56,6 +58,12 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     public ResponseEntity<Object> handleDatabase(DataAccessException exception, WebRequest request) {
         LOG.error("数据库操作失败", exception);
         return response(HttpStatus.INTERNAL_SERVER_ERROR, "数据操作失败，请稍后重试", null, new HttpHeaders(), request);
+    }
+
+    @ExceptionHandler({RedisConnectionFailureException.class, org.springframework.dao.QueryTimeoutException.class})
+    public ResponseEntity<Object> handleSessionStoreUnavailable(DataAccessException exception, WebRequest request) {
+        LOG.error("会话存储（Redis）不可用", exception);
+        return response(HttpStatus.SERVICE_UNAVAILABLE, "登录服务暂时不可用，请稍后重试", null, new HttpHeaders(), request);
     }
 
     @ExceptionHandler(Exception.class)

@@ -310,15 +310,18 @@ onMounted(async () => {
 
     <section class="panel">
       <el-alert v-if="error" :title="error" type="error" show-icon :closable="false" class="hint" />
-      <el-alert v-else-if="emptyResponse" title="接口当前返回空响应（后端 /videos/page 尚未返回数据），页面已按空列表展示。" type="info" show-icon
+      <el-alert
+v-else-if="emptyResponse" title="接口当前返回空响应（后端 /videos/page 尚未返回数据），页面已按空列表展示。" type="info" show-icon
         :closable="false" class="hint" />
 
-      <div v-loading="loading" class="stage" tabindex="0" @wheel.prevent="onWheel" @keydown.left.prevent="prev"
+      <div
+v-loading="loading" class="stage" tabindex="0" @wheel.prevent="onWheel" @keydown.left.prevent="prev"
         @keydown.right.prevent="next">
         <div v-if="!videos.length && !loading" class="stage-empty">暂无视频数据</div>
 
         <div class="deck">
-          <article v-for="card in visibleCards" :key="card.item.id" class="video-card"
+          <article
+v-for="card in visibleCards" :key="card.item.id" class="video-card"
             :class="{ 'is-active': card.offset === 0 }" :style="cardStyle(card)" @mouseenter="hoveredId = card.item.id"
             @mouseleave="onCardLeave(card.item.id)" @click="onCardClick(card)">
             <div class="card-cover">
@@ -332,7 +335,8 @@ onMounted(async () => {
                 <span v-if="card.item.durationSeconds != null">
                   {{ formatDuration(card.item.durationSeconds) }}
                 </span>
-                <button v-else class="duration-btn" type="button" :disabled="!!durationLoading[card.item.id]"
+                <button
+v-else class="duration-btn" type="button" :disabled="!!durationLoading[card.item.id]"
                   @click.stop="loadDuration(card.item.id)">
                   {{ durationFailed[card.item.id] ? '重试探测' : '获取时长' }}
                 </button>
@@ -368,9 +372,11 @@ onMounted(async () => {
       <pre class="raw">{{ rawPage ? JSON.stringify(rawPage, null, 2) : '（空响应）' }}</pre>
     </el-dialog>
 
-    <el-dialog v-model="playerVisible" :title="playing?.name ?? '视频播放'" width="min(920px, 94vw)" destroy-on-close
+    <el-dialog
+v-model="playerVisible" :title="playing?.name ?? '视频播放'" width="min(920px, 94vw)" destroy-on-close
       @opened="tryAutoPlay">
-      <video v-if="playing" ref="playerRef" class="player" controls preload="metadata" :src="playing.videoUrl"
+      <video
+v-if="playing" ref="playerRef" class="player" controls preload="metadata" :src="playing.videoUrl"
         @error="onPlayerError" />
       <el-alert v-if="playerError" :title="playerError" type="error" show-icon :closable="false" />
     </el-dialog>

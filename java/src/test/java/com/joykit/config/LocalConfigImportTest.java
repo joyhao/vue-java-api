@@ -2,8 +2,11 @@ package com.joykit.config;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.Banner;
 import org.springframework.boot.WebApplicationType;
@@ -12,11 +15,19 @@ import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Configuration;
 
 class LocalConfigImportTest {
+    private static final Path LOCAL_CONFIG = Path.of("application-local.yml");
+
+    @Test
+    void localConfigStaysOffClasspath() {
+        assertNull(
+                getClass().getResource("/application-local.yml"),
+                "application-local.yml 不能放在 src/main/resources 下，否则会被打进 jar");
+    }
 
     @Test
     void applicationYmlImportsLocalConfig() {
         assumeTrue(
-                LocalConfigImportTest.class.getResource("/application-local.yml") != null,
+                Files.exists(LOCAL_CONFIG),
                 "application-local.yml 已被 git 排除，仅本地存在时验证");
         try (ConfigurableApplicationContext context = minimalApplication().run()) {
             assertEquals("本地配置已加载", context.getEnvironment().getProperty("app.local.marker"));
@@ -34,7 +45,7 @@ class LocalConfigImportTest {
     @Test
     void dataSourcePasswordComesFromEnvironment() {
         assumeTrue(
-                LocalConfigImportTest.class.getResource("/application-local.yml") != null,
+                Files.exists(LOCAL_CONFIG),
                 "application-local.yml 已被 git 排除，仅本地存在时验证");
         try (ConfigurableApplicationContext context = minimalApplication()
                 .run("--DB_PASSWORD=from-env")) {

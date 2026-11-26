@@ -24,7 +24,8 @@ class RegisterTest {
     @BeforeEach
     void setup() {
         service = mock(AuthService.class);
-        mvc = MockMvcBuilders.standaloneSetup(new AuthController(service))
+        mvc = MockMvcBuilders.standaloneSetup(
+                        new AuthController(service, mock(com.joykit.modular.auth.service.LoginRateLimiter.class)))
                 .setControllerAdvice(new GlobalExceptionHandler()).build();
     }
 

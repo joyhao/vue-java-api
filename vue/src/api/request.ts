@@ -26,7 +26,6 @@ request.interceptors.response.use(
       currentUser.value = response.data?.data?.user || null
     }
     if (/\/auth\/logout(?:\?|$)/.test(response.config.url || '')) {
-      localStorage.removeItem('joykit_refresh')
       accessToken = null
       currentUser.value = null
     }
@@ -58,7 +57,6 @@ export function refreshAccess() {
       if (!accessToken) throw new Error('刷新响应缺少访问凭证')
       currentUser.value = response.data?.data?.user || null
     }).catch((error) => {
-      if (axios.isAxiosError(error) && error.response?.status === 401) localStorage.removeItem('joykit_refresh')
       accessToken = null
       throw error
     }).finally(() => { refreshing = null })
@@ -66,10 +64,7 @@ export function refreshAccess() {
   return refreshing
 }
 
-localStorage.removeItem('joykit_refresh')
-
 function redirectToLogin() {
-  localStorage.removeItem('joykit_refresh')
   currentUser.value = null
   accessToken = null
   if (['/login', '/register'].includes(window.location.pathname)) return

@@ -1,7 +1,7 @@
 package com.joykit.common.exception;
 
 public final class BusinessException extends RuntimeException {
-    public enum Kind { VALIDATION, NOT_FOUND, CONFLICT, FORBIDDEN }
+    public enum Kind { VALIDATION, NOT_FOUND, CONFLICT, FORBIDDEN, RATE_LIMITED }
     private final Kind kind;
 
     public BusinessException(Kind kind, String message) {

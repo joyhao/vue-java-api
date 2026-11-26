@@ -13,5 +13,5 @@ public interface AuthMapper {
     UserPO findEnabledUser(@Param("id") long id);
 
     @Update("UPDATE public.\"user\" SET last_login_at=#{time} WHERE id=#{id}")
-    void updateLastLogin(@Param("id") long id, @Param("time") Instant time);
+    int updateLastLogin(@Param("id") long id, @Param("time") Instant time);
 }

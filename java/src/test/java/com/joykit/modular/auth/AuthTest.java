@@ -20,15 +20,19 @@ class AuthTest {
     }
 
     @Test
-    void webReturnsAccessTokenAndKeepsRefreshTokenPrivate() {
+    void webSendsRefreshTokenOnlyAsHttpOnlyCookie() {
         var service = mock(AuthService.class);
         var user = new AuthService.Identity(1, "test", "Test", "WEB");
         when(service.login("test", "password", AuthService.ClientType.WEB))
-                .thenReturn(new AuthService.Login(user, "test-token", Instant.now().plusSeconds(1800)));
+                .thenReturn(new AuthService.Login(user, "test-token", Instant.now().plusSeconds(1800),
+                        "test-refresh-token", Instant.now().plusSeconds(86400)));
         var response = new org.springframework.mock.web.MockHttpServletResponse();
-        var result = new AuthController(service).login(new com.joykit.modular.auth.dto.LoginDTO("test", "password", null), new MockHttpServletRequest(), response);
-        assertTrue(response.getHeader("Set-Cookie").contains("Max-Age=0"));
-        assertFalse(response.getHeader("Set-Cookie").contains("test-token"));
+        var result = new AuthController(service, mock(com.joykit.modular.auth.service.LoginRateLimiter.class)).login(new com.joykit.modular.auth.dto.LoginDTO("test", "password", null), new MockHttpServletRequest(), response);
+        String cookie = response.getHeader("Set-Cookie");
+        assertTrue(cookie.contains("joykit_refresh=test-refresh-token"));
+        assertTrue(cookie.contains("HttpOnly"));
+        assertTrue(cookie.contains("Max-Age="));
+        assertFalse(cookie.contains("test-token"));
         assertEquals("test-token", result.getData().token());
         assertNull(result.getData().refreshToken());
     }
@@ -40,17 +44,30 @@ class AuthTest {
         when(service.login("test", "password", AuthService.ClientType.APP))
                 .thenReturn(new AuthService.Login(user, "app-token", Instant.now().plusSeconds(1800)));
         var response = new org.springframework.mock.web.MockHttpServletResponse();
-        var result = new AuthController(service).login(new com.joykit.modular.auth.dto.LoginDTO("test", "password", AuthService.ClientType.APP), new MockHttpServletRequest(), response);
+        var result = new AuthController(service, mock(com.joykit.modular.auth.service.LoginRateLimiter.class)).login(new com.joykit.modular.auth.dto.LoginDTO("test", "password", AuthService.ClientType.APP), new MockHttpServletRequest(), response);
         assertNull(response.getHeader("Set-Cookie"));
         assertEquals("app-token", result.getData().token());
         assertEquals(200, response.getStatus());
     }
 
     @Test
+    void logoutClearsBrowserRefreshCookie() {
+        var service = mock(AuthService.class);
+        var request = new MockHttpServletRequest();
+        request.addHeader("Authorization", "Bearer test-token");
+        var response = new org.springframework.mock.web.MockHttpServletResponse();
+        new AuthController(service, mock(com.joykit.modular.auth.service.LoginRateLimiter.class)).logout(request, response);
+        String cookie = response.getHeader("Set-Cookie");
+        assertTrue(cookie.contains("joykit_refresh="));
+        assertTrue(cookie.contains("Max-Age=0"));
+        verify(service).logout("test-token");
+    }
+
+    @Test
     void invalidCredentialsReturnUnauthorized() {
         var service = mock(AuthService.class);
         var response = new org.springframework.mock.web.MockHttpServletResponse();
-        new AuthController(service).login(new com.joykit.modular.auth.dto.LoginDTO("missing", "bad", null), new MockHttpServletRequest(), response);
+        new AuthController(service, mock(com.joykit.modular.auth.service.LoginRateLimiter.class)).login(new com.joykit.modular.auth.dto.LoginDTO("missing", "bad", null), new MockHttpServletRequest(), response);
         assertEquals(401, response.getStatus());
     }
 }

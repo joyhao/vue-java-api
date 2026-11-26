@@ -16,7 +16,8 @@ export interface User extends UserInput {
 
 export interface UserPage {
   list: User[]
-  total: number
+  /** 未请求统计时为 null */
+  total: number | null
 }
 
 interface Result<T> {
@@ -29,12 +30,19 @@ interface Result<T> {
 export const getUser = (id: string) =>
   request.get<Result<User>>(`/users/${id}`).then((response) => response.data.data)
 
-export const getUsers = (params: { pageNumber: number; pageSize: number; keyword: string }) =>
+export const getUsers = (params: {
+  pageNumber: number
+  pageSize: number
+  keyword: string
+  /** 为 false 时不统计总数，响应的 total 为 null；仅用于总数已知的翻页 */
+  withCount?: boolean
+}) =>
   request
     .post<Result<UserPage>>('/users/page', {
       pageIndex: params.pageNumber,
       pageSize: params.pageSize,
       keyword: params.keyword,
+      withCount: params.withCount ?? true,
     })
     .then((response) => response.data.data)
 export const createUser = (input: UserInput) =>

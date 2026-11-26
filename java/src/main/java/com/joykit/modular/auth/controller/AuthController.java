@@ -4,6 +4,7 @@ import com.joykit.common.result.Result;
 import com.joykit.modular.auth.dto.LoginDTO;
 import com.joykit.modular.auth.dto.RegisterDTO;
 import com.joykit.modular.auth.service.AuthService;
+import com.joykit.modular.auth.service.LoginRateLimiter;
 import com.joykit.modular.auth.vo.LoginVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -21,13 +22,15 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
-    public static final String COOKIE = "joykit_session";
     private final AuthService auth;
+    private final LoginRateLimiter rateLimiter;
 
     @Operation(summary = "注册账号")
     @PostMapping("/register")
     @ResponseStatus(HttpStatus.CREATED)
-    public Result<Boolean> register(@Valid @RequestBody RegisterDTO body) {
+    public Result<Boolean> register(@Valid @RequestBody RegisterDTO body, HttpServletRequest request) {
+        // 注册是匿名接口且每次要跑 PBKDF2，先做 IP 频率限制
+        rateLimiter.checkRegisterAllowed(clientIp(request));
         if (!body.password().equals(body.confirmPassword())) {
             throw new com.joykit.common.exception.BusinessException(
                     com.joykit.common.exception.BusinessException.Kind.VALIDATION, "两次密码不一致");
@@ -50,12 +53,16 @@ public class AuthController {
     public Result<LoginVO> login(@Valid @RequestBody LoginDTO body, HttpServletRequest request,
                                  HttpServletResponse response) {
         var type = body.clientType() == null ? AuthService.ClientType.WEB : body.clientType();
+        // 登录是匿名接口且每次要跑 PBKDF2：先限流（账号失败锁定 + IP 窗口），再进业务
+        rateLimiter.checkLoginAllowed(clientIp(request), body.account());
         var login = auth.login(body.account(), body.password(), type);
         response.setHeader(HttpHeaders.CACHE_CONTROL, "no-store");
         if (login == null) {
+            rateLimiter.recordLoginFailure(clientIp(request), body.account());
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             return Result.fail(401, "账号或密码错误，或账号已停用", null);
         }
+        rateLimiter.recordLoginSuccess(body.account());
         return loginResult(login, request, response);
     }
 
@@ -78,7 +85,6 @@ public class AuthController {
     private Result<LoginVO> loginResult(AuthService.Login login, HttpServletRequest request, HttpServletResponse response) {
         boolean web = "WEB".equals(login.user().clientType());
         if (web) {
-            response.addHeader(HttpHeaders.SET_COOKIE, cookie("", 0, request));
             if (login.refreshToken() != null) response.addHeader(HttpHeaders.SET_COOKIE, refreshCookieHeader(login.refreshToken(),
                     Math.max(0, java.time.Duration.between(java.time.Instant.now(), login.refreshExpiresAt()).getSeconds()), request));
         }
@@ -102,7 +108,6 @@ public class AuthController {
     @PostMapping("/logout")
     public Result<Boolean> logout(HttpServletRequest request, HttpServletResponse response) {
         auth.logout(token(request));
-        response.addHeader(HttpHeaders.SET_COOKIE, cookie("", 0, request));
         response.addHeader(HttpHeaders.SET_COOKIE, refreshCookieHeader("", 0, request));
         return Result.success(true);
     }
@@ -111,6 +116,15 @@ public class AuthController {
         String authorization = request.getHeader(HttpHeaders.AUTHORIZATION);
         if (authorization != null && authorization.startsWith("Bearer ")) return authorization.substring(7);
         return null;
+    }
+
+    /**
+     * 只用 TCP 对端地址。不信任 X-Forwarded-For（客户端可伪造）；
+     * 部署在反向代理后面时应配置 server.forward-headers-strategy，让 servlet 容器以受信方式解析该头。
+     */
+    static String clientIp(HttpServletRequest request) {
+        String remote = request.getRemoteAddr();
+        return remote == null || remote.isBlank() ? "unknown" : remote;
     }
 
     private static String refreshCookie(HttpServletRequest request) {
@@ -122,10 +136,5 @@ public class AuthController {
     private static String refreshCookieHeader(String token, long maxAge, HttpServletRequest request) {
         return ResponseCookie.from("joykit_refresh", token).httpOnly(true).secure(request.isSecure())
                 .sameSite("Strict").path("/api/auth").maxAge(maxAge).build().toString();
-    }
-
-    private static String cookie(String token, long maxAge, HttpServletRequest request) {
-        return ResponseCookie.from(COOKIE, token).httpOnly(true).secure(request.isSecure())
-                .sameSite("Lax").path("/").maxAge(maxAge).build().toString();
     }
 }
